@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Locked Links — the daily word puzzle</title>
+<meta name="description" content="Sort 16 words into 4 hidden groups, but 9 of the words are locked. Win mini-games to unlock them, or deduce them blind.">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e1014;--surf:#171a21;--tile:#222632;--tile-h:#2a2f3d;--ink:#eef0f4;--muted:#8a91a3;--line:#2c313e;--accent:#c6f432;--accent-d:#a8d61a;--bad:#ff5d6c;--good:#c6f432;
+--g0:#c6f432;--g1:#ff9548;--g2:#ff5ca8;--g3:#35e0d0;--wg:#538d4e;--wy:#b59f3b;--wx:#3a3a3c}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 600px at 50% -200px,#1b2030 0%,var(--bg) 60%);color:var(--ink);font-family:"Space Grotesk",system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+header{width:100%;max-width:560px;display:flex;align-items:center;justify-content:space-between;padding:14px 14px;border-bottom:1px solid var(--line)}
+h1{margin:0;font-size:22px;font-weight:700;letter-spacing:3px;text-transform:uppercase}
+h1 span{color:var(--accent)}
+.icon-btn{background:var(--surf);border:1px solid var(--line);border-radius:10px;min-width:40px;height:40px;font-size:16px;cursor:pointer;color:var(--ink);font-family:inherit;font-weight:600}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+main{width:100%;max-width:560px;padding:14px 12px 20px;display:flex;flex-direction:column;align-items:center}
+.sub{color:var(--muted);font-size:14px;margin:2px 0 12px;text-align:center;letter-spacing:.5px}
+.board{width:100%;display:flex;flex-direction:column;gap:8px}
+.solved{border-radius:10px;padding:11px;text-align:center;animation:pop .3s;color:#0e1014}
+.solved b{display:block;font-size:14px;text-transform:uppercase;letter-spacing:1.5px}
+.solved span{font-size:15px;font-weight:500}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tile{position:relative;aspect-ratio:1.25/1;border:1px solid var(--line);border-radius:10px;background:var(--tile);font-family:inherit;font-weight:700;color:var(--ink);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px;font-size:clamp(11px,3.3vw,15px);letter-spacing:.5px;text-transform:uppercase;word-break:break-word;line-height:1.1;transition:transform .1s,background .15s}
+.tile:hover{background:var(--tile-h)}
+.tile:active{transform:scale(.96)}
+.tile.sel{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tile.lock{background:linear-gradient(160deg,#1c2130,#151821);border:1px dashed #4b5470;color:var(--accent)}
+.tile.lock .ic{font-size:clamp(17px,5vw,24px);font-weight:500;line-height:1}
+.tile.lock .lb{font-size:9px;font-weight:600;letter-spacing:1.5px;margin-top:5px;color:var(--muted)}
+.tile.lock.sel{background:var(--accent);color:var(--bg);border:1px solid var(--accent)}
+.tile.lock.sel .lb{color:var(--bg)}
+.tile.fail{background:repeating-linear-gradient(45deg,#1a1d24,#1a1d24 6px,#20242d 6px,#20242d 12px);border:1px solid #3a4050;color:#6d7487}
+.tile.fail .lb{font-size:9px;letter-spacing:1.5px;margin-top:5px}
+.tile.fail.sel{background:var(--ink);color:var(--bg)}
+.tile.new{animation:flip .45s}
+@keyframes flip{0%{transform:rotateY(90deg)}100%{transform:none}}
+@keyframes pop{0%{transform:scale(.92);opacity:.3}100%{transform:none;opacity:1}}
+.shake{animation:shake .35s}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.mist{display:flex;align-items:center;gap:10px;margin:16px 0 4px;color:var(--muted);font-size:14px;letter-spacing:.5px}
+.dot{width:12px;height:12px;border-radius:3px;background:var(--accent);transform:rotate(45deg)}
+.dot.off{background:var(--line)}
+.msg{min-height:24px;font-size:15px;font-weight:500;text-align:center;margin:4px 0}
+.msg.bad{color:var(--bad)}.msg.good{color:var(--good)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.btn{border:1px solid #3a4050;background:transparent;border-radius:999px;padding:10px 20px;font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.5px;color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.accent{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.btn:disabled{opacity:.3;cursor:default}
+.legend{margin-top:18px;display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;font-size:12px;color:var(--muted);letter-spacing:.5px}
+.legend b{color:var(--accent);font-weight:500;margin-right:3px}
+.overlay{position:fixed;inset:0;background:rgba(5,6,9,.72);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;padding:12px;z-index:10}
+.overlay.show{display:flex}
+.modal{background:var(--surf);border:1px solid var(--line);border-radius:16px;max-width:440px;width:100%;padding:18px 18px 20px;max-height:94vh;overflow:auto;position:relative}
+.modal h2{margin:0 0 6px;font-size:20px;padding-right:80px;letter-spacing:.5px}
+.modal h2 .gi{color:var(--accent);margin-right:6px}
+.modal p,.modal li{font-size:15px;line-height:1.5;color:#d3d7e0}
+.modal .x{position:absolute;top:12px;right:12px}
+.mg-sub{color:var(--muted);font-size:14px;margin:0 0 14px;line-height:1.45}
+.wrow{display:flex;gap:5px;justify-content:center;margin-bottom:5px}
+.wt{width:clamp(28px,9vw,44px);height:clamp(28px,9vw,44px);border:2px solid #3a3f4c;border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:clamp(14px,4.5vw,21px);text-transform:uppercase}
+.wt.wg{background:var(--wg);border-color:var(--wg);color:#fff}.wt.wy{background:var(--wy);border-color:var(--wy);color:#fff}.wt.wn{background:var(--wx);border-color:var(--wx);color:#fff}
+.wt.cur{border-color:#6b7385}
+.wt.rev{background:#2a3220;border-color:var(--accent-d);color:var(--accent)}
+.wkb{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+.wkr{display:flex;gap:4px;justify-content:center}
+.wk{flex:1;max-width:36px;height:46px;border:none;border-radius:5px;background:#3a3f4c;font-family:inherit;font-weight:700;font-size:14px;color:var(--ink);cursor:pointer;padding:0}
+.wk.wide{max-width:60px;flex:1.6;font-size:11px;letter-spacing:.5px}
+.wk.wg{background:var(--wg)}.wk.wy{background:var(--wy)}.wk.wn{background:#1f2128;color:#6d7487}
+.wk:disabled{cursor:default}
+.inrow{display:flex;gap:8px;margin-top:12px}
+.inrow input{flex:1;min-width:0;font-family:inherit;font-size:17px;padding:10px 12px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;text-transform:uppercase;letter-spacing:3px;outline:none}
+.inrow input:focus{border-color:var(--accent)}
+.big{font-size:34px;text-align:center;margin:8px 0 12px;letter-spacing:4px}
+.clue{font-size:19px;text-align:center;margin:6px 0 14px;font-weight:500}
+.mgmsg{min-height:22px;text-align:center;margin-top:10px;font-weight:500}
+.mgmsg.bad{color:var(--bad)}.mgmsg.good{color:var(--good)}
+.ladrow{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:4px}
+.heat{font-size:13px;min-width:120px;font-weight:600;letter-spacing:.3px}
+.timer{text-align:center;font-size:14px;color:var(--muted);letter-spacing:.5px}
+.timer b{font-size:19px;color:var(--ink)}
+.timebar{height:4px;background:var(--line);border-radius:4px;overflow:hidden;margin:6px 0 2px}
+.timebar i{display:block;height:100%;background:var(--accent);transition:width 1s linear}
+.atiles{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:16px 0 10px;touch-action:none;user-select:none}
+.atile{width:clamp(32px,10vw,46px);height:clamp(40px,12vw,54px);border-radius:8px;background:var(--tile);border:1px solid #3a4050;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:clamp(17px,5vw,23px);cursor:grab;transition:transform .12s,background .12s}
+.atile.pick{background:var(--accent);color:var(--bg);border-color:var(--accent);transform:translateY(-4px)}
+.atile.drag{opacity:.35}
+.atile.over{border-color:var(--accent);transform:scale(1.08)}
+.atile.solved{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.ghost{position:fixed;pointer-events:none;z-index:50;width:46px;height:54px;border-radius:8px;background:var(--accent);color:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:23px;transform:translate(-50%,-50%) rotate(-4deg);box-shadow:0 8px 20px rgba(0,0,0,.5)}
+.letters{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:14px}
+.letters button{width:34px;height:42px;border:none;border-radius:6px;background:#3a3f4c;font-family:inherit;font-weight:700;font-size:15px;cursor:pointer;color:var(--ink)}
+.letters button:disabled{background:#1f2128;color:#4d5262}
+.letters button.hit{background:var(--wg);color:#fff}
+.lives{display:flex;gap:8px;justify-content:center;margin:4px 0}
+.lives i{width:12px;height:12px;border-radius:3px;background:var(--accent);transform:rotate(45deg)}
+.lives i.off{background:var(--line)}
+.plist{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0}
+.plist button{height:46px;border-radius:10px;border:1px solid var(--line);background:var(--tile);color:var(--ink);font-family:inherit;font-size:17px;font-weight:600;cursor:pointer}
+.plist button.today{border-color:var(--accent)}
+.plist button.won{background:var(--accent);color:var(--bg)}.plist button.lost{background:#4a2129}
+.res{text-align:center;font-size:22px;letter-spacing:2px;line-height:1.25;margin:10px 0}
+.mini-legend{display:grid;grid-template-columns:28px 1fr;gap:6px 8px;font-size:14px;margin:10px 0;color:#d3d7e0}
+.mini-legend .gi{color:var(--accent);font-weight:700;text-align:center}
+.tiers{display:flex;gap:6px;margin:6px 0}
+.tiers span{flex:1;height:8px;border-radius:4px}
+.statbar{margin-top:22px;width:100%;display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:12px;background:var(--surf);overflow:hidden}
+.statbar div{padding:12px 6px;text-align:center;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.statbar div+div{border-left:1px solid var(--line)}
+.statbar b{display:block;font-size:24px;letter-spacing:0;color:var(--ink);margin-bottom:2px}
+.statbar div.wr b{color:var(--accent)}
+.tabs{display:flex;gap:4px;background:var(--surf);border:1px solid var(--line);padding:4px;border-radius:12px;margin-bottom:10px}
+.tabs button{border:none;background:none;color:var(--muted);font-family:inherit;font-size:14px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:8px 18px;border-radius:8px;cursor:pointer}
+.tabs button.on{background:var(--accent);color:var(--bg)}
+footer{font-size:11px;color:var(--muted);padding:6px 0 14px;letter-spacing:1.5px;text-transform:uppercase}
+</style>
+</head>
+<body>
+<header>
+  <button class="icon-btn" id="helpBtn" aria-label="How to play">?</button>
+  <h1>Locked<span>·</span>Links</h1>
+  <button class="icon-btn" id="listBtn" aria-label="Unlimited puzzles">☰</button>
+</header>
+<main>
+  <div class="tabs"><button id="tDaily" class="on">Daily</button><button id="tUnl">Unlimited</button></div>
+  <div class="sub" id="sub">Make 4 groups of 4</div>
+  <div class="board">
+    <div id="solvedArea" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+  <div class="mist">Mistakes left: <span id="dots" style="display:flex;gap:6px"></span></div>
+  <div class="msg" id="msg"></div>
+  <div class="actions" id="mainActions">
+    <button class="btn" id="shufBtn">Shuffle</button>
+    <button class="btn" id="deselBtn">Deselect</button>
+    <button class="btn primary" id="subBtn">Submit</button>
+  </div>
+  <div class="actions" id="endActions" style="display:none">
+    <button class="btn accent" id="resBtn">See result</button>
+    <button class="btn" id="newBtn">New game</button>
+  </div>
+  <div class="legend" id="legend"></div>
+  <div class="statbar" id="statbar"></div>
+</main>
+<footer>Locked Links · a daily word puzzle</footer>
+
+<!-- How to play -->
+<div class="overlay" id="helpOv"><div class="modal">
+  <button class="icon-btn x" data-close>✕</button>
+  <h2>How to play</h2>
+  <p>Find <b>4 groups of 4</b> words that share something in common. Pick 4 tiles and press <b>Submit</b>. You can make 4 mistakes.</p>
+  <p><b>The twist:</b> 9 of the 16 words are <b>locked</b>. Tap a locked tile to play a quick mini-game. Win it and the word is revealed.</p>
+  <p><b>Lose the mini-game and the tile stays locked for good.</b> You'll have to work out which group it belongs to without seeing it. You can also put a locked tile into a guess without ever playing its game.</p>
+  <div class="mini-legend" id="helpLegend"></div>
+  <p>Groups go from easiest to trickiest:</p><div class="tiers"><span style="background:var(--g0)"></span><span style="background:var(--g1)"></span><span style="background:var(--g2)"></span><span style="background:var(--g3)"></span></div><p>Watch out for words that seem to fit more than one group.</p>
+  <button class="btn primary" data-close style="width:100%">Let's play</button>
+</div></div>
+
+<!-- Locked tile choice -->
+<div class="overlay" id="chooseOv"><div class="modal">
+  <button class="icon-btn x" data-close>✕</button>
+  <h2 id="chTitle">Locked tile</h2>
+  <p id="chText"></p>
+  <div class="actions" style="flex-direction:column">
+    <button class="btn accent" id="chPlay">Play to unlock</button>
+    <button class="btn" id="chSel">Select it while locked</button>
+  </div>
+</div></div>
+
+<!-- Mini-game -->
+<div class="overlay" id="mgOv"><div class="modal">
+  <button class="btn x" id="mgQuit" style="padding:5px 12px;font-size:13px">Give up</button>
+  <h2 id="mgTitle"></h2>
+  <div class="mg-sub" id="mgSub"></div>
+  <div id="mgBody"></div>
+  <div class="mgmsg" id="mgMsg"></div>
+  <div class="actions" id="mgDone" style="display:none"><button class="btn primary" id="mgBack">Back to the grid</button></div>
+</div></div>
+
+<!-- Puzzle list -->
+<div class="overlay" id="listOv"><div class="modal">
+  <button class="icon-btn x" data-close>✕</button>
+  <h2>Unlimited puzzles</h2>
+  <p class="mg-sub"><b id="listCount"></b> puzzles so far. Every day, yesterday's Daily joins this list. Lime = solved, red = missed, outlined = the one you're on.</p>
+  <div class="plist" id="plist"></div>
+</div></div>
+
+<!-- Result -->
+<div class="overlay" id="endOv"><div class="modal">
+  <button class="icon-btn x" data-close>✕</button>
+  <h2 id="endTitle"></h2>
+  <p id="endText"></p>
+  <div class="res" id="endGrid"></div>
+  <div class="actions">
+    <button class="btn accent" id="shareBtn">Share result</button>
+    <button class="btn" id="nextBtn">New game</button>
+  </div>
+  <div class="msg good" id="shareMsg"></div>
+</div></div>
+
+<script>
+const UNLIMITED = [{"groups": [{"name": "Fruits", "words": ["MANGO", "GRAPE", "MELON", "KIWI"]}, {"name": "___ pie", "words": ["APPLE", "PORK", "COTTAGE", "HUMBLE"]}, {"name": "Laptop brands", "words": ["DELL", "ACER", "LENOVO", "ASUS"]}, {"name": "Things with keys", "words": ["PIANO", "MAP", "LOCK", "KEYBOARD"]}], "locked": {"KIWI": {"g": "clue", "c": "Fuzzy brown fruit, green inside, or a flightless bird"}, "MELON": {"g": "wordle"}, "APPLE": {"g": "hangman"}, "COTTAGE": {"g": "vowels"}, "HUMBLE": {"g": "anagram"}, "LENOVO": {"g": "anagram"}, "LOCK": {"g": "ladder"}, "KEYBOARD": {"g": "emoji", "e": "🔑 + 🛹"}, "PIANO": {"g": "clue", "c": "Has 88 black and white keys"}}}, {"groups": [{"name": "Planets", "words": ["MARS", "VENUS", "NEPTUNE", "EARTH"]}, {"name": "Chocolate bars", "words": ["TWIX", "BOUNTY", "GALAXY", "SNICKERS"]}, {"name": "___ star", "words": ["ROCK", "POP", "MOVIE", "SHOOTING"]}, {"name": "Things with rings", "words": ["SATURN", "ONION", "TREE", "CIRCUS"]}], "locked": {"TREE": {"g": "ladder"}, "ROCK": {"g": "ladder"}, "VENUS": {"g": "wordle"}, "NEPTUNE": {"g": "anagram"}, "BOUNTY": {"g": "hangman"}, "GALAXY": {"g": "emoji", "e": "🌌 ✨ 🌀"}, "SHOOTING": {"g": "clue", "c": "Firing at a target"}, "SATURN": {"g": "vowels"}, "ONION": {"g": "emoji", "e": "🧅 😢"}}}, {"groups": [{"name": "Dog breeds", "words": ["POODLE", "BEAGLE", "BOXER", "PUG"]}, {"name": "Sports played with a net", "words": ["TENNIS", "NETBALL", "BADMINTON", "VOLLEYBALL"]}, {"name": "Kitchen tools", "words": ["WHISK", "LADLE", "GRATER", "TONGS"]}, {"name": "Hidden body parts", "words": ["CHARM", "LEGEND", "SHINE", "CHINA"]}], "locked": {"POODLE": {"g": "vowels"}, "BEAGLE": {"g": "anagram"}, "BOXER": {"g": "wordle"}, "NETBALL": {"g": "emoji", "e": "🥅 + 🏀"}, "BADMINTON": {"g": "hangman"}, "WHISK": {"g": "clue", "c": "Tool for beating eggs"}, "GRATER": {"g": "anagram"}, "LEGEND": {"g": "hangman"}, "CHARM": {"g": "wordle"}}}, {"groups": [{"name": "Coffee drinks", "words": ["LATTE", "MOCHA", "ESPRESSO", "CAPPUCCINO"]}, {"name": "Shades of brown", "words": ["TAN", "BEIGE", "CHESTNUT", "CARAMEL"]}, {"name": "Card games", "words": ["POKER", "SNAP", "RUMMY", "BRIDGE"]}, {"name": "Things you cross", "words": ["ROAD", "LINE", "FINGERS", "SWORDS"]}], "locked": {"SNAP": {"g": "ladder"}, "ROAD": {"g": "ladder"}, "LATTE": {"g": "wordle"}, "ESPRESSO": {"g": "anagram"}, "CHESTNUT": {"g": "emoji", "e": "🌰 🔥 🎄"}, "CARAMEL": {"g": "hangman"}, "RUMMY": {"g": "clue", "c": "Card game where you collect sets and runs"}, "FINGERS": {"g": "emoji", "e": "🤞"}, "SWORDS": {"g": "vowels"}}}, {"groups": [{"name": "Sea creatures", "words": ["SHARK", "WHALE", "DOLPHIN", "OCTOPUS"]}, {"name": "___ fish", "words": ["STAR", "SWORD", "CAT", "JELLY"]}, {"name": "Things with ink", "words": ["SQUID", "PEN", "PRINTER", "TATTOO"]}, {"name": "Breads", "words": ["BAGEL", "NAAN", "ROTI", "PITA"]}], "locked": {"STAR": {"g": "ladder"}, "PITA": {"g": "ladder"}, "SHARK": {"g": "wordle"}, "DOLPHIN": {"g": "hangman"}, "JELLY": {"g": "clue", "c": "A wobbly dessert"}, "SWORD": {"g": "anagram"}, "TATTOO": {"g": "vowels"}, "PRINTER": {"g": "emoji", "e": "📄 ➡️ 🖨️"}, "BAGEL": {"g": "anagram"}}}, {"groups": [{"name": "In your wallet", "words": ["CASH", "CARD", "RECEIPT", "PHOTO"]}, {"name": "Poker moves", "words": ["FOLD", "CALL", "BLUFF", "RAISE"]}, {"name": "Things you can raise", "words": ["FLAG", "EYEBROW", "CHILDREN", "GLASS"]}, {"name": "Garden kit", "words": ["SHED", "HOSE", "RAKE", "SPADE"]}], "locked": {"CASH": {"g": "ladder"}, "RAKE": {"g": "ladder"}, "RECEIPT": {"g": "hangman"}, "BLUFF": {"g": "wordle"}, "RAISE": {"g": "clue", "c": "Increase a bet or a salary"}, "EYEBROW": {"g": "emoji", "e": "👁️ + 🤨"}, "CHILDREN": {"g": "anagram"}, "SPADE": {"g": "vowels"}, "HOSE": {"g": "clue", "c": "A long pipe for watering plants"}}}, {"groups": [{"name": "Weather", "words": ["RAIN", "SNOW", "HAIL", "FOG"]}, {"name": "___ ball", "words": ["FOOT", "BASKET", "EYE", "MEAT"]}, {"name": "Royal titles", "words": ["KING", "QUEEN", "PRINCE", "DUKE"]}, {"name": "Chess pieces", "words": ["ROOK", "BISHOP", "KNIGHT", "PAWN"]}], "locked": {"HAIL": {"g": "ladder"}, "DUKE": {"g": "ladder"}, "BASKET": {"g": "hangman"}, "MEAT": {"g": "clue", "c": "Steak, chicken or lamb"}, "EYE": {"g": "emoji", "e": "👁️"}, "PRINCE": {"g": "anagram"}, "BISHOP": {"g": "vowels"}, "KNIGHT": {"g": "emoji", "e": "🐴 ⚔️ 🛡️"}, "QUEEN": {"g": "wordle"}}}, {"groups": [{"name": "___ berry", "words": ["STRAW", "RASP", "GOOSE", "BLUE"]}, {"name": "___ house", "words": ["GREEN", "LIGHT", "WARE", "DOG"]}, {"name": "Shades of red", "words": ["RUBY", "CRIMSON", "SCARLET", "MAROON"]}, {"name": "Gemstones", "words": ["EMERALD", "SAPPHIRE", "OPAL", "PEARL"]}], "locked": {"RUBY": {"g": "ladder"}, "OPAL": {"g": "clue", "c": "Milky gemstone that shimmers with rainbow colours"}, "GOOSE": {"g": "emoji", "e": "🪿"}, "STRAW": {"g": "wordle"}, "LIGHT": {"g": "wordle"}, "WARE": {"g": "clue", "c": "Goods for sale, as in 'kitchen___'"}, "CRIMSON": {"g": "anagram"}, "MAROON": {"g": "vowels"}, "SAPPHIRE": {"g": "hangman"}}}, {"groups": [{"name": "Breakfast foods", "words": ["CEREAL", "PANCAKE", "OMELETTE", "PORRIDGE"]}, {"name": "At a wedding", "words": ["TOAST", "VOWS", "RING", "CAKE"]}, {"name": "Boxing", "words": ["GLOVES", "ROUND", "BELL", "CORNER"]}, {"name": "Shapes", "words": ["SQUARE", "CIRCLE", "OVAL", "TRIANGLE"]}], "locked": {"CAKE": {"g": "ladder"}, "BELL": {"g": "ladder"}, "PANCAKE": {"g": "emoji", "e": "🍳 + 🎂"}, "OMELETTE": {"g": "hangman"}, "CEREAL": {"g": "vowels"}, "VOWS": {"g": "clue", "c": "Promises made at the altar"}, "ROUND": {"g": "clue", "c": "A three-minute stretch of a fight"}, "TRIANGLE": {"g": "anagram"}, "TOAST": {"g": "wordle"}}}, {"groups": [{"name": "Musical instruments", "words": ["FLUTE", "VIOLIN", "HARP", "TRUMPET"]}, {"name": "Things on strings", "words": ["GUITAR", "PUPPET", "KITE", "RACKET"]}, {"name": "___ stick", "words": ["DRUM", "JOY", "LIP", "CHOP"]}, {"name": "Bodies of water", "words": ["LAKE", "POND", "LAGOON", "RIVER"]}], "locked": {"KITE": {"g": "ladder"}, "POND": {"g": "ladder"}, "TRUMPET": {"g": "hangman"}, "VIOLIN": {"g": "anagram"}, "RACKET": {"g": "vowels"}, "JOY": {"g": "emoji", "e": "😄 🎉"}, "LIP": {"g": "clue", "c": "___ balm; the edge of a cup"}, "LAGOON": {"g": "hangman"}, "FLUTE": {"g": "wordle"}}}, {"groups": [{"name": "Shades of blue", "words": ["COBALT", "TEAL", "AZURE", "CYAN"]}, {"name": "___ black", "words": ["PITCH", "JET", "INK", "COAL"]}, {"name": "Things with wings", "words": ["ANGEL", "HOSPITAL", "BUTTERFLY", "CHICKEN"]}, {"name": "Ends in a body part", "words": ["SPEAR", "CHAIR", "ALARM", "WORSHIP"]}], "locked": {"TEAL": {"g": "ladder"}, "AZURE": {"g": "wordle"}, "JET": {"g": "emoji", "e": "✈️ 💨"}, "WORSHIP": {"g": "vowels"}, "CHICKEN": {"g": "anagram"}, "CHAIR": {"g": "hangman"}, "ANGEL": {"g": "clue", "c": "Has a halo and a harp"}, "ALARM": {"g": "clue", "c": "Rings to wake you up"}, "PITCH": {"g": "wordle"}}}, {"groups": [{"name": "Pasta", "words": ["PENNE", "FUSILLI", "ORZO", "RAVIOLI"]}, {"name": "Things you can crack", "words": ["CODE", "JOKE", "KNUCKLES", "SMILE"]}, {"name": "Poker hands", "words": ["FLUSH", "STRAIGHT", "PAIR", "TRIPS"]}, {"name": "Hidden numbers", "words": ["OFTEN", "CANINE", "WEIGHT", "STONE"]}], "locked": {"CODE": {"g": "ladder"}, "TRIPS": {"g": "wordle"}, "FUSILLI": {"g": "emoji", "e": "🍝 🌀"}, "KNUCKLES": {"g": "vowels"}, "CANINE": {"g": "anagram"}, "PAIR": {"g": "hangman"}, "PENNE": {"g": "clue", "c": "Tube-shaped pasta cut at an angle"}, "OFTEN": {"g": "clue", "c": "Frequently"}, "FLUSH": {"g": "wordle"}}}, {"groups": [{"name": "Fish", "words": ["SALMON", "TROUT", "PIKE", "PERCH"]}, {"name": "Things to sit on", "words": ["STOOL", "BENCH", "SOFA", "OTTOMAN"]}, {"name": "Empires", "words": ["ROMAN", "MONGOL", "BRITISH", "AZTEC"]}, {"name": "Country minus its first letter", "words": ["PAIN", "RAN", "MAN", "HAD"]}], "locked": {"SOFA": {"g": "ladder"}, "STOOL": {"g": "wordle"}, "HAD": {"g": "emoji", "e": "🫴 ⏪"}, "OTTOMAN": {"g": "vowels"}, "MONGOL": {"g": "anagram"}, "SALMON": {"g": "hangman"}, "PAIN": {"g": "clue", "c": "An ache or a hurt"}, "AZTEC": {"g": "clue", "c": "Ancient people of Tenochtitlan"}, "TROUT": {"g": "wordle"}}}, {"groups": [{"name": "In a deck of cards", "words": ["JOKER", "ACE", "KING", "QUEEN"]}, {"name": "Tools", "words": ["DRILL", "WRENCH", "CHISEL", "PLIERS"]}, {"name": "___head", "words": ["AIR", "EGG", "BONE", "FIGURE"]}, {"name": "___pot", "words": ["JACK", "TEA", "CHIMNEY", "FLOWER"]}], "locked": {"KING": {"g": "ladder"}, "QUEEN": {"g": "wordle"}, "AIR": {"g": "emoji", "e": "🫁 🌬️"}, "PLIERS": {"g": "vowels"}, "FLOWER": {"g": "anagram"}, "FIGURE": {"g": "hangman"}, "CHIMNEY": {"g": "clue", "c": "Santa's way into the house"}, "JOKER": {"g": "clue", "c": "The wild card in the pack"}, "DRILL": {"g": "wordle"}}}, {"groups": [{"name": "Greek letters", "words": ["ALPHA", "SIGMA", "OMEGA", "BETA"]}, {"name": "___ ray", "words": ["MANTA", "X", "SUN", "DEATH"]}, {"name": "One-name singers", "words": ["STING", "ADELE", "SHAKIRA", "RIHANNA"]}, {"name": "Hidden fruit", "words": ["PLUMBER", "PEARL", "FIGURE", "LIMERICK"]}], "locked": {"BETA": {"g": "ladder"}, "OMEGA": {"g": "wordle"}, "SUN": {"g": "emoji", "e": "☀️"}, "SHAKIRA": {"g": "vowels"}, "FIGURE": {"g": "anagram"}, "PLUMBER": {"g": "hangman"}, "STING": {"g": "clue", "c": "What a bee does, or a one-name singer"}, "MANTA": {"g": "clue", "c": "A giant, flat, winged fish"}, "SIGMA": {"g": "wordle"}}}, {"groups": [{"name": "Ways to cook an egg", "words": ["POACHED", "SCRAMBLED", "FRIED", "BOILED"]}, {"name": "Steal", "words": ["NICK", "SWIPE", "PINCH", "LIFT"]}, {"name": "Snooker", "words": ["BREAK", "CUSHION", "POCKET", "CUE"]}, {"name": "Things with eyes", "words": ["NEEDLE", "POTATO", "STORM", "PEACOCK"]}], "locked": {"LIFT": {"g": "ladder"}, "FRIED": {"g": "wordle"}, "NEEDLE": {"g": "emoji", "e": "🪡"}, "CUSHION": {"g": "vowels"}, "POACHED": {"g": "anagram"}, "STORM": {"g": "hangman"}, "BREAK": {"g": "clue", "c": "Snap in two, or a rest"}, "SWIPE": {"g": "clue", "c": "Move your finger across a screen"}, "PINCH": {"g": "wordle"}}}, {"groups": [{"name": "Board games", "words": ["CHESS", "LUDO", "DRAUGHTS", "BACKGAMMON"]}, {"name": "___mate", "words": ["CHECK", "PLAY", "ROOM", "FLAT"]}, {"name": "Palindromes", "words": ["LEVEL", "RADAR", "KAYAK", "CIVIC"]}, {"name": "Fabrics", "words": ["DENIM", "SATIN", "TWEED", "VELVET"]}], "locked": {"FLAT": {"g": "ladder"}, "TWEED": {"g": "wordle"}, "DRAUGHTS": {"g": "emoji", "e": "⚫⚪ 🔲"}, "CHECK": {"g": "vowels"}, "KAYAK": {"g": "anagram"}, "RADAR": {"g": "hangman"}, "LEVEL": {"g": "clue", "c": "A tool to check something is flat"}, "CHESS": {"g": "clue", "c": "Game of checkmate"}, "SATIN": {"g": "wordle"}}}, {"groups": [{"name": "Hello", "words": ["HOWDY", "ALOHA", "CIAO", "HOLA"]}, {"name": "Goodbye", "words": ["ADIOS", "FAREWELL", "CHEERIO", "TOODLES"]}, {"name": "Said with a drink", "words": ["CHEERS", "SLAINTE", "SKOL", "PROST"]}, {"name": "Hidden animals", "words": ["BEARD", "SCOWL", "GOATEE", "DOGMA"]}], "locked": {"PROST": {"g": "wordle"}, "CIAO": {"g": "emoji", "e": "🇮🇹 👋"}, "HOLA": {"g": "vowels"}, "GOATEE": {"g": "anagram"}, "SKOL": {"g": "hangman"}, "FAREWELL": {"g": "clue", "c": "A formal goodbye"}, "TOODLES": {"g": "clue", "c": "A cutesy 'see you later'"}, "SCOWL": {"g": "wordle"}, "CHEERS": {"g": "anagram"}}}, {"groups": [{"name": "Racket sports", "words": ["SQUASH", "TENNIS", "BADMINTON", "PADEL"]}, {"name": "Vegetables", "words": ["MARROW", "PUMPKIN", "TURNIP", "LEEK"]}, {"name": "Sound like letters", "words": ["SEA", "PEA", "TEA", "BEE"]}, {"name": "___bone", "words": ["BACK", "WISH", "FUNNY", "JAW"]}], "locked": {"LEEK": {"g": "ladder"}, "FUNNY": {"g": "wordle"}, "TEA": {"g": "emoji", "e": "🫖 ☕"}, "WISH": {"g": "vowels"}, "TURNIP": {"g": "anagram"}, "MARROW": {"g": "hangman"}, "SEA": {"g": "clue", "c": "Big salty body of water"}, "SQUASH": {"g": "clue", "c": "Crush flat, or a walled racket sport"}, "BADMINTON": {"g": "anagram"}}}, {"groups": [{"name": "Units of time", "words": ["HOUR", "DECADE", "CENTURY", "MILLENNIUM"]}, {"name": "Tiny", "words": ["MINUTE", "WEE", "PETITE", "TEENY"]}, {"name": "___hand", "words": ["SECOND", "BACK", "OFF", "UNDER"]}, {"name": "Hidden vehicles", "words": ["CARPET", "BUSHY", "VANILLA", "TRAMPOLINE"]}], "locked": {"HOUR": {"g": "ladder"}, "TEENY": {"g": "wordle"}, "OFF": {"g": "emoji", "e": "🔌 ❌"}, "DECADE": {"g": "vowels"}, "VANILLA": {"g": "anagram"}, "TRAMPOLINE": {"g": "hangman"}, "WEE": {"g": "clue", "c": "Scottish for small"}, "SECOND": {"g": "clue", "c": "Comes after first"}, "UNDER": {"g": "wordle"}}}, {"groups": [{"name": "Spices", "words": ["CUMIN", "SAFFRON", "PAPRIKA", "TURMERIC"]}, {"name": "Football moves", "words": ["NUTMEG", "VOLLEY", "HEADER", "TACKLE"]}, {"name": "Baby things", "words": ["DUMMY", "NAPPY", "BIB", "RATTLE"]}, {"name": "Have shells", "words": ["EGG", "TURTLE", "SNAIL", "TACO"]}], "locked": {"TACO": {"g": "ladder"}, "NAPPY": {"g": "wordle"}, "EGG": {"g": "emoji", "e": "🐣"}, "TURMERIC": {"g": "vowels"}, "HEADER": {"g": "anagram"}, "RATTLE": {"g": "hangman"}, "NUTMEG": {"g": "clue", "c": "Spice, or a ball through the legs"}, "SAFFRON": {"g": "clue", "c": "The world's most expensive spice"}, "TURTLE": {"g": "anagram"}}}, {"groups": [{"name": "Metals", "words": ["TIN", "ZINC", "LEAD", "COBALT"]}, {"name": "Slang for police", "words": ["COPPER", "BOBBY", "FUZZ", "PLOD"]}, {"name": "Things you do to clothes", "words": ["IRON", "FOLD", "HEM", "DARN"]}, {"name": "US coins", "words": ["NICKEL", "DIME", "PENNY", "QUARTER"]}], "locked": {"DARN": {"g": "ladder"}, "BOBBY": {"g": "wordle"}, "DIME": {"g": "emoji", "e": "🔟 🪙"}, "ZINC": {"g": "vowels"}, "COBALT": {"g": "anagram"}, "COPPER": {"g": "hangman"}, "NICKEL": {"g": "clue", "c": "A five-cent coin"}, "FOLD": {"g": "clue", "c": "Crease paper in half"}, "QUARTER": {"g": "anagram"}}}, {"groups": [{"name": "Dances", "words": ["SALSA", "WALTZ", "SAMBA", "RUMBA"]}, {"name": "NATO alphabet", "words": ["TANGO", "FOXTROT", "HOTEL", "ECHO"]}, {"name": "Dips", "words": ["HUMMUS", "GUACAMOLE", "TZATZIKI", "AIOLI"]}, {"name": "Things that bounce", "words": ["CHEQUE", "BALL", "EMAIL", "KANGAROO"]}], "locked": {"BALL": {"g": "ladder"}, "AIOLI": {"g": "wordle"}, "FOXTROT": {"g": "emoji", "e": "🦊 + 🐎"}, "GUACAMOLE": {"g": "vowels"}, "KANGAROO": {"g": "anagram"}, "CHEQUE": {"g": "hangman"}, "SALSA": {"g": "clue", "c": "Spicy dip, or a Latin dance"}, "WALTZ": {"g": "clue", "c": "A ballroom dance in three-four time"}, "HOTEL": {"g": "wordle"}}}, {"groups": [{"name": "Trees", "words": ["OAK", "ELM", "BIRCH", "PINE"]}, {"name": "After a fire", "words": ["ASH", "SMOKE", "EMBER", "SOOT"]}, {"name": "Long for", "words": ["YEARN", "ACHE", "CRAVE", "HANKER"]}, {"name": "Have needles", "words": ["CACTUS", "COMPASS", "HEDGEHOG", "SYRINGE"]}], "locked": {"SOOT": {"g": "ladder"}, "SMOKE": {"g": "wordle"}, "ELM": {"g": "emoji", "e": "🌳"}, "ACHE": {"g": "vowels"}, "COMPASS": {"g": "anagram"}, "PINE": {"g": "hangman"}, "HEDGEHOG": {"g": "clue", "c": "Spiky garden animal"}, "CRAVE": {"g": "clue", "c": "Want something really badly"}, "YEARN": {"g": "wordle"}}}, {"groups": [{"name": "Organs", "words": ["LIVER", "LUNG", "KIDNEY", "SPLEEN"]}, {"name": "Beans", "words": ["BUTTER", "BROAD", "RUNNER", "PINTO"]}, {"name": "Card suits", "words": ["SPADE", "CLUB", "DIAMOND", "HEART"]}, {"name": "___fly", "words": ["DRAGON", "FIRE", "HOUSE", "HORSE"]}], "locked": {"CLUB": {"g": "ladder"}, "HOUSE": {"g": "wordle"}, "LUNG": {"g": "emoji", "e": "🫁"}, "BUTTER": {"g": "vowels"}, "DRAGON": {"g": "anagram"}, "PINTO": {"g": "hangman"}, "SPADE": {"g": "clue", "c": "Garden digging tool"}, "BROAD": {"g": "clue", "c": "Wide"}, "LIVER": {"g": "wordle"}}}, {"groups": [{"name": "Cheeses", "words": ["BRIE", "FETA", "CHEDDAR", "GOUDA"]}, {"name": "Shades of white", "words": ["IVORY", "PEARL", "CREAM", "SNOW"]}, {"name": "___cake", "words": ["PAN", "CUP", "FISH", "CHEESE"]}, {"name": "Spell another word backwards", "words": ["LIVE", "STAR", "PART", "DRAWER"]}], "locked": {"FISH": {"g": "ladder"}, "IVORY": {"g": "wordle"}, "CUP": {"g": "emoji", "e": "🏆"}, "FETA": {"g": "vowels"}, "CHEDDAR": {"g": "anagram"}, "LIVE": {"g": "hangman"}, "PAN": {"g": "clue", "c": "Fry an egg in one"}, "STAR": {"g": "clue", "c": "Twinkles in the night sky"}, "CREAM": {"g": "wordle"}}}, {"groups": [{"name": "Star signs", "words": ["LEO", "ARIES", "LIBRA", "VIRGO"]}, {"name": "Have scales", "words": ["FISH", "PIANO", "DRAGON", "SNAKE"]}, {"name": "Male animals", "words": ["RAM", "BUCK", "STAG", "BOAR"]}, {"name": "Things that roar", "words": ["ENGINE", "CROWD", "TWENTIES", "LION"]}], "locked": {"FISH": {"g": "ladder"}, "CROWD": {"g": "wordle"}, "RAM": {"g": "emoji", "e": "🐏"}, "TWENTIES": {"g": "vowels"}, "SNAKE": {"g": "anagram"}, "STAG": {"g": "hangman"}, "LEO": {"g": "clue", "c": "Lion of the zodiac"}, "ARIES": {"g": "clue", "c": "First sign of the zodiac"}, "PIANO": {"g": "wordle"}}}, {"groups": [{"name": "Kitchen appliances", "words": ["TOASTER", "KETTLE", "BLENDER", "FRIDGE"]}, {"name": "Drums", "words": ["SNARE", "BASS", "BONGO", "TIMPANI"]}, {"name": "Things you set", "words": ["TRAP", "TABLE", "ALARM", "RECORD"]}, {"name": "___cat", "words": ["TOM", "BOB", "WILD", "COPY"]}], "locked": {"TRAP": {"g": "ladder"}, "BONGO": {"g": "wordle"}, "TOM": {"g": "emoji", "e": "🐈 ♂️"}, "WILD": {"g": "vowels"}, "FRIDGE": {"g": "anagram"}, "KETTLE": {"g": "hangman"}, "BASS": {"g": "clue", "c": "Low-pitched, or a guitar with four strings"}, "TABLE": {"g": "clue", "c": "You eat dinner at one"}, "ALARM": {"g": "wordle"}}}, {"groups": [{"name": "Birds", "words": ["ROBIN", "SWALLOW", "WREN", "FINCH"]}, {"name": "Show off", "words": ["CROW", "BOAST", "BRAG", "GLOAT"]}, {"name": "Eat greedily", "words": ["GULP", "SCOFF", "WOLF", "DEVOUR"]}, {"name": "___hood", "words": ["CHILD", "NEIGHBOUR", "BROTHER", "FALSE"]}], "locked": {"GULP": {"g": "ladder"}, "ROBIN": {"g": "wordle"}, "DEVOUR": {"g": "emoji", "e": "😋 🍔🍕🍟"}, "NEIGHBOUR": {"g": "vowels"}, "BROTHER": {"g": "anagram"}, "BRAG": {"g": "hangman"}, "WREN": {"g": "clue", "c": "Tiny brown songbird"}, "CHILD": {"g": "clue", "c": "A young person"}, "GLOAT": {"g": "wordle"}}}, {"groups": [{"name": "Currencies", "words": ["EURO", "RUPEE", "PESO", "RAND"]}, {"name": "Desire", "words": ["ITCH", "URGE", "WHIM", "YEN"]}, {"name": "Weights", "words": ["POUND", "OUNCE", "STONE", "GRAM"]}, {"name": "Big cats", "words": ["PUMA", "JAGUAR", "LYNX", "CHEETAH"]}], "locked": {"PUMA": {"g": "ladder"}, "STONE": {"g": "wordle"}, "YEN": {"g": "emoji", "e": "🇯🇵 💴"}, "URGE": {"g": "vowels"}, "CHEETAH": {"g": "anagram"}, "EURO": {"g": "hangman"}, "PESO": {"g": "clue", "c": "Currency of Mexico"}, "RUPEE": {"g": "clue", "c": "Currency of India"}, "POUND": {"g": "wordle"}}}];
+const DAILY = [{"groups": [{"name": "Rivers", "words": ["NILE", "THAMES", "DANUBE", "GANGES"]}, {"name": "Shades of green", "words": ["LIME", "OLIVE", "JADE", "MINT"]}, {"name": "Greek mythology", "words": ["ORACLE", "AMAZON", "TITAN", "CYCLOPS"]}, {"name": "Have crowns", "words": ["TOOTH", "TREE", "KING", "WATCH"]}], "locked": {"TREE": {"g": "ladder"}, "OLIVE": {"g": "wordle"}, "LIME": {"g": "emoji", "e": "🍋‍🟩"}, "GANGES": {"g": "vowels"}, "ORACLE": {"g": "anagram"}, "DANUBE": {"g": "hangman"}, "TITAN": {"g": "clue", "c": "A giant of Greek myth"}, "TOOTH": {"g": "clue", "c": "Dentists fill these"}, "WATCH": {"g": "wordle"}}}, {"groups": [{"name": "Scientists", "words": ["CURIE", "EINSTEIN", "DARWIN", "NEWTON"]}, {"name": "Units", "words": ["WATT", "JOULE", "VOLT", "OHM"]}, {"name": "Australian cities", "words": ["PERTH", "SYDNEY", "BRISBANE", "ADELAIDE"]}, {"name": "Inside an atom", "words": ["PROTON", "NEUTRON", "ELECTRON", "NUCLEUS"]}], "locked": {"VOLT": {"g": "ladder"}, "JOULE": {"g": "wordle"}, "OHM": {"g": "emoji", "e": "Ω"}, "NEWTON": {"g": "vowels"}, "EINSTEIN": {"g": "anagram"}, "BRISBANE": {"g": "hangman"}, "PROTON": {"g": "clue", "c": "Positively charged particle"}, "ELECTRON": {"g": "clue", "c": "Negatively charged particle"}, "PERTH": {"g": "wordle"}}}, {"groups": [{"name": "Pizza toppings", "words": ["PEPPERONI", "ANCHOVY", "HAM", "PINEAPPLE"]}, {"name": "Clouds", "words": ["CIRRUS", "CUMULUS", "STRATUS", "NIMBUS"]}, {"name": "Have a stone", "words": ["PEACH", "CHERRY", "AVOCADO", "OLIVE"]}, {"name": "___room", "words": ["MUSH", "BALL", "BATH", "CLOAK"]}], "locked": {"MUSH": {"g": "ladder"}, "PEACH": {"g": "wordle"}, "NIMBUS": {"g": "emoji", "e": "☁️ 🌧️"}, "AVOCADO": {"g": "vowels"}, "PINEAPPLE": {"g": "anagram"}, "CUMULUS": {"g": "hangman"}, "PEPPERONI": {"g": "clue", "c": "Spicy salami on a pizza"}, "OLIVE": {"g": "clue", "c": "Small fruit pressed for oil"}, "CLOAK": {"g": "wordle"}}}, {"groups": [{"name": "Office kit", "words": ["STAPLER", "PRINTER", "SCANNER", "KEYBOARD"]}, {"name": "Lizards", "words": ["GECKO", "IGUANA", "CHAMELEON", "MONITOR"]}, {"name": "Rodents", "words": ["RAT", "HAMSTER", "VOLE", "MOUSE"]}, {"name": "Things that click", "words": ["FINGERS", "TONGUE", "CAMERA", "SEATBELT"]}], "locked": {"VOLE": {"g": "ladder"}, "MOUSE": {"g": "wordle"}, "PRINTER": {"g": "emoji", "e": "📄 🖨️"}, "MONITOR": {"g": "vowels"}, "CHAMELEON": {"g": "anagram"}, "CAMERA": {"g": "hangman"}, "FINGERS": {"g": "clue", "c": "You have ten of them"}, "SCANNER": {"g": "clue", "c": "Copies a page into a computer"}, "GECKO": {"g": "wordle"}}}, {"groups": [{"name": "Music speeds", "words": ["PIANO", "LARGO", "PRESTO", "ADAGIO"]}, {"name": "Magic words", "words": ["ABRACADABRA", "ALAKAZAM", "HOCUSPOCUS", "SESAME"]}, {"name": "Strong point", "words": ["FORTE", "KNACK", "FLAIR", "GIFT"]}, {"name": "Seeds", "words": ["POPPY", "SUNFLOWER", "CHIA", "FLAX"]}], "locked": {"FLAX": {"g": "ladder"}, "KNACK": {"g": "wordle"}, "ADAGIO": {"g": "emoji", "e": "🎵 🐢"}, "ABRACADABRA": {"g": "vowels"}, "PRESTO": {"g": "anagram"}, "SESAME": {"g": "hangman"}, "FLAIR": {"g": "clue", "c": "A natural talent or style"}, "LARGO": {"g": "clue", "c": "Very slow, in music"}, "POPPY": {"g": "wordle"}}}, {"groups": [{"name": "In the bathroom", "words": ["TOWEL", "MIRROR", "SINK", "TAP"]}, {"name": "English cities", "words": ["BATH", "YORK", "LEEDS", "DERBY"]}, {"name": "Hats", "words": ["BERET", "FEDORA", "TRILBY", "BOWLER"]}, {"name": "Cricket roles", "words": ["BATTER", "KEEPER", "FIELDER", "UMPIRE"]}], "locked": {"BATH": {"g": "ladder"}, "DERBY": {"g": "wordle"}, "TRILBY": {"g": "emoji", "e": "🎩 🕵️"}, "MIRROR": {"g": "vowels"}, "BATTER": {"g": "anagram"}, "BOWLER": {"g": "hangman"}, "KEEPER": {"g": "clue", "c": "Guards the goal or wicket"}, "TOWEL": {"g": "clue", "c": "You dry yourself with it"}, "BERET": {"g": "wordle"}}}, {"groups": [{"name": "Pirate things", "words": ["PARROT", "PLANK", "CUTLASS", "EYEPATCH"]}, {"name": "Copy", "words": ["MIMIC", "APE", "COPY", "ECHO"]}, {"name": "Exercises", "words": ["SQUAT", "LUNGE", "BURPEE", "CRUNCH"]}, {"name": "Things you bury", "words": ["HATCHET", "BONE", "TREASURE", "HEAD"]}], "locked": {"BONE": {"g": "ladder"}, "PLANK": {"g": "wordle"}, "APE": {"g": "emoji", "e": "🦍"}, "HATCHET": {"g": "vowels"}, "EYEPATCH": {"g": "anagram"}, "BURPEE": {"g": "hangman"}, "COPY": {"g": "clue", "c": "Duplicate"}, "PARROT": {"g": "clue", "c": "Talking bird"}, "LUNGE": {"g": "wordle"}}}, {"groups": [{"name": "Greek gods", "words": ["ZEUS", "HERA", "ARES", "ATHENA"]}, {"name": "NASA missions", "words": ["GEMINI", "MERCURY", "VOYAGER", "APOLLO"]}, {"name": "Noble gases", "words": ["NEON", "ARGON", "HELIUM", "XENON"]}, {"name": "In space", "words": ["COMET", "METEOR", "NEBULA", "QUASAR"]}], "locked": {"NEON": {"g": "ladder"}, "ARGON": {"g": "wordle"}, "ZEUS": {"g": "emoji", "e": "⚡ 👑"}, "HERA": {"g": "vowels"}, "VOYAGER": {"g": "anagram"}, "APOLLO": {"g": "hangman"}, "NEBULA": {"g": "clue", "c": "A glowing cloud of space gas"}, "ATHENA": {"g": "clue", "c": "Greek goddess of wisdom"}, "COMET": {"g": "wordle"}}}, {"groups": [{"name": "Sewing kit", "words": ["NEEDLE", "THREAD", "THIMBLE", "BOBBIN"]}, {"name": "Social media actions", "words": ["LIKE", "SHARE", "FOLLOW", "COMMENT"]}, {"name": "Fence parts", "words": ["POST", "RAIL", "PICKET", "GATE"]}, {"name": "Start with a name", "words": ["TOMATO", "PATIO", "SUEDE", "BILLBOARD"]}], "locked": {"POST": {"g": "ladder"}, "SUEDE": {"g": "wordle"}, "THIMBLE": {"g": "emoji", "e": "🪡 👆🛡️"}, "THREAD": {"g": "vowels"}, "BOBBIN": {"g": "anagram"}, "LIKE": {"g": "hangman"}, "GATE": {"g": "clue", "c": "Way through a fence"}, "SHARE": {"g": "clue", "c": "Split something with others"}, "PATIO": {"g": "wordle"}}}, {"groups": [{"name": "Desserts", "words": ["TRIFLE", "SORBET", "TART", "PAVLOVA"]}, {"name": "Hair products", "words": ["GEL", "SPRAY", "SERUM", "MOUSSE"]}, {"name": "A tiny bit", "words": ["SCRAP", "SHRED", "IOTA", "SPECK"]}, {"name": "Candle parts", "words": ["WAX", "WICK", "FLAME", "HOLDER"]}], "locked": {"TART": {"g": "ladder"}, "FLAME": {"g": "wordle"}, "HOLDER": {"g": "emoji", "e": "🕯️ 🫳"}, "MOUSSE": {"g": "vowels"}, "SORBET": {"g": "anagram"}, "SCRAP": {"g": "hangman"}, "SHRED": {"g": "clue", "c": "Tear into thin strips"}, "SERUM": {"g": "clue", "c": "A concentrated skincare liquid"}, "SPECK": {"g": "wordle"}}}, {"groups": [{"name": "Have tails", "words": ["COIN", "COMET", "TUXEDO", "TADPOLE"]}, {"name": "Birds of prey", "words": ["KITE", "HAWK", "FALCON", "OSPREY"]}, {"name": "Golf scores", "words": ["EAGLE", "BIRDIE", "ALBATROSS", "PAR"]}, {"name": "___man", "words": ["BOGEY", "SNOW", "POST", "SUPER"]}], "locked": {"SNOW": {"g": "ladder"}, "COMET": {"g": "wordle"}, "PAR": {"g": "emoji", "e": "⛳ ="}, "BIRDIE": {"g": "vowels"}, "TADPOLE": {"g": "anagram"}, "FALCON": {"g": "hangman"}, "COIN": {"g": "clue", "c": "Flip it for heads or tails"}, "OSPREY": {"g": "clue", "c": "Fish-eating bird of prey"}, "BOGEY": {"g": "wordle"}}}, {"groups": [{"name": "Car parts", "words": ["BOOT", "BUMPER", "WINDSCREEN", "EXHAUST"]}, {"name": "Shoes", "words": ["SANDAL", "CLOG", "SLIPPER", "LOAFER"]}, {"name": "Lazy people", "words": ["SLOB", "LAYABOUT", "IDLER", "SLACKER"]}, {"name": "Easter ___", "words": ["BONNET", "EGG", "BUNNY", "SUNDAY"]}], "locked": {"CLOG": {"g": "ladder"}, "BUNNY": {"g": "wordle"}, "BOOT": {"g": "emoji", "e": "👢"}, "SANDAL": {"g": "vowels"}, "SLIPPER": {"g": "anagram"}, "BUMPER": {"g": "hangman"}, "BONNET": {"g": "clue", "c": "Old-fashioned hat tied under the chin"}, "SLACKER": {"g": "clue", "c": "Someone who avoids work"}, "IDLER": {"g": "wordle"}}}, {"groups": [{"name": "Japanese food", "words": ["RAMEN", "TEMPURA", "MISO", "UDON"]}, {"name": "Things you roll", "words": ["SUSHI", "DICE", "EYES", "CREDITS"]}, {"name": "Martial arts", "words": ["JUDO", "KARATE", "AIKIDO", "SUMO"]}, {"name": "English words from Japanese", "words": ["TSUNAMI", "KARAOKE", "EMOJI", "TYCOON"]}], "locked": {"EYES": {"g": "ladder"}, "EMOJI": {"g": "wordle"}, "JUDO": {"g": "emoji", "e": "🥋 🤼"}, "UDON": {"g": "vowels"}, "TSUNAMI": {"g": "anagram"}, "MISO": {"g": "hangman"}, "KARATE": {"g": "clue", "c": "Martial art famous for chops"}, "TYCOON": {"g": "clue", "c": "A powerful business magnate"}, "SUSHI": {"g": "wordle"}}}, {"groups": [{"name": "Christmas", "words": ["TINSEL", "WREATH", "STOCKING", "BAUBLE"]}, {"name": "Biscuits", "words": ["DIGESTIVE", "SHORTBREAD", "GINGERNUT", "CRACKER"]}, {"name": "Whisky", "words": ["RYE", "MALT", "BOURBON", "SCOTCH"]}, {"name": "___ tape", "words": ["RED", "DUCT", "MASKING", "TICKER"]}], "locked": {"DUCT": {"g": "ladder"}, "RED": {"g": "emoji", "e": "🟥"}, "GINGERNUT": {"g": "vowels"}, "BOURBON": {"g": "anagram"}, "WREATH": {"g": "hangman"}, "STOCKING": {"g": "clue", "c": "Hung by the fireplace on Christmas Eve"}, "SCOTCH": {"g": "clue", "c": "Whisky from Scotland"}, "CRACKER": {"g": "anagram"}, "MALT": {"g": "hangman"}}}, {"groups": [{"name": "Parts of a flower", "words": ["POLLEN", "SEPAL", "STAMEN", "ANTHER"]}, {"name": "___ cell", "words": ["STEM", "BLOOD", "NERVE", "FUEL"]}, {"name": "Bravery", "words": ["COURAGE", "GUTS", "GRIT", "PLUCK"]}, {"name": "Anagrams of each other", "words": ["PETAL", "PLATE", "PLEAT", "LEAPT"]}], "locked": {"FUEL": {"g": "ladder"}, "PETAL": {"g": "wordle"}, "COURAGE": {"g": "emoji", "e": "🦁 💪"}, "ANTHER": {"g": "vowels"}, "STAMEN": {"g": "anagram"}, "GUTS": {"g": "hangman"}, "LEAPT": {"g": "clue", "c": "Jumped"}, "BLOOD": {"g": "clue", "c": "Red liquid in your veins"}, "SEPAL": {"g": "wordle"}}}, {"groups": [{"name": "Islands", "words": ["JAVA", "BALI", "CRETE", "MALTA"]}, {"name": "Coding languages", "words": ["PYTHON", "RUBY", "RUST", "KOTLIN"]}, {"name": "Snakes", "words": ["COBRA", "VIPER", "MAMBA", "ADDER"]}, {"name": "Fast", "words": ["SWIFT", "BRISK", "RAPID", "NIPPY"]}], "locked": {"RUBY": {"g": "ladder"}, "NIPPY": {"g": "wordle"}, "JAVA": {"g": "emoji", "e": "☕ 🏝️"}, "KOTLIN": {"g": "vowels"}, "MAMBA": {"g": "anagram"}, "RUST": {"g": "hangman"}, "CRETE": {"g": "clue", "c": "Greek island of the Minotaur"}, "RAPID": {"g": "clue", "c": "Very quick"}, "COBRA": {"g": "wordle"}}}, {"groups": [{"name": "Hairstyles", "words": ["BUN", "MULLET", "QUIFF", "PONYTAIL"]}, {"name": "Bread", "words": ["BAP", "ROLL", "COB", "BRIOCHE"]}, {"name": "Palindromic names", "words": ["BOB", "ANNA", "OTTO", "HANNAH"]}, {"name": "Fish", "words": ["COD", "HADDOCK", "PLAICE", "SOLE"]}], "locked": {"SOLE": {"g": "ladder"}, "QUIFF": {"g": "wordle"}, "BAP": {"g": "emoji", "e": "🍞 🥪"}, "ANNA": {"g": "vowels"}, "BRIOCHE": {"g": "anagram"}, "HANNAH": {"g": "hangman"}, "BUN": {"g": "clue", "c": "Hair tied up in a knot"}, "HADDOCK": {"g": "clue", "c": "White fish often smoked"}, "PONYTAIL": {"g": "anagram"}}}, {"groups": [{"name": "Gym equipment", "words": ["TREADMILL", "ROWER", "DUMBBELL", "KETTLEBELL"]}, {"name": "In a courtroom", "words": ["JUDGE", "JURY", "DOCK", "BENCH"]}, {"name": "Where boats tie up", "words": ["QUAY", "PIER", "JETTY", "WHARF"]}, {"name": "___bell", "words": ["DOOR", "BLUE", "COW", "SLEIGH"]}], "locked": {"DOOR": {"g": "ladder"}, "BENCH": {"g": "wordle"}, "PIER": {"g": "emoji", "e": "🌊 🎡"}, "SLEIGH": {"g": "vowels"}, "TREADMILL": {"g": "anagram"}, "KETTLEBELL": {"g": "hangman"}, "WHARF": {"g": "clue", "c": "Where ships load and unload"}, "ROWER": {"g": "clue", "c": "Gym machine that copies a boat"}, "JUDGE": {"g": "wordle"}}}, {"groups": [{"name": "Mexican food", "words": ["TACO", "BURRITO", "NACHO", "FAJITA"]}, {"name": "End in -ITO", "words": ["MOSQUITO", "INCOGNITO", "MOJITO", "BANDITO"]}, {"name": "Cocktails", "words": ["MARTINI", "DAIQUIRI", "NEGRONI", "MARGARITA"]}, {"name": "Hide who you are", "words": ["MASK", "ALIAS", "DISGUISE", "COVER"]}], "locked": {"TACO": {"g": "ladder"}, "ALIAS": {"g": "wordle"}, "MOSQUITO": {"g": "emoji", "e": "🦟"}, "DAIQUIRI": {"g": "vowels"}, "BURRITO": {"g": "anagram"}, "NEGRONI": {"g": "hangman"}, "BANDITO": {"g": "clue", "c": "A Mexican outlaw"}, "MARGARITA": {"g": "clue", "c": "Tequila cocktail with a salted rim"}, "MASK": {"g": "hangman"}}}, {"groups": [{"name": "Football positions", "words": ["STRIKER", "GOALKEEPER", "DEFENDER", "MIDFIELDER"]}, {"name": "Things that strike", "words": ["LIGHTNING", "CLOCK", "MATCH", "SNAKE"]}, {"name": "Tennis words", "words": ["LOVE", "DEUCE", "ACE", "LET"]}, {"name": "The devil", "words": ["DEVIL", "SATAN", "LUCIFER", "BEELZEBUB"]}], "locked": {"LOVE": {"g": "ladder"}, "CLOCK": {"g": "wordle"}, "MIDFIELDER": {"g": "emoji", "e": "⚽ ↔️"}, "BEELZEBUB": {"g": "vowels"}, "LUCIFER": {"g": "anagram"}, "GOALKEEPER": {"g": "hangman"}, "LIGHTNING": {"g": "clue", "c": "Flash in a thunderstorm"}, "DEUCE": {"g": "clue", "c": "Forty-all in tennis"}, "MATCH": {"g": "wordle"}}}, {"groups": [{"name": "Shades of yellow", "words": ["CANARY", "GOLD", "BUTTER", "AMBER"]}, {"name": "Condiments", "words": ["KETCHUP", "MAYO", "MUSTARD", "CHUTNEY"]}, {"name": "Enjoy", "words": ["RELISH", "SAVOUR", "ADORE", "LOVE"]}, {"name": "A failure", "words": ["LEMON", "FLOP", "DUD", "TURKEY"]}], "locked": {"GOLD": {"g": "ladder"}, "ADORE": {"g": "wordle"}, "DUD": {"g": "emoji", "e": "💣 🤷"}, "MAYO": {"g": "vowels"}, "SAVOUR": {"g": "anagram"}, "KETCHUP": {"g": "hangman"}, "BUTTER": {"g": "clue", "c": "Spread on toast"}, "CANARY": {"g": "clue", "c": "Yellow songbird"}, "FLOP": {"g": "hangman"}}}, {"groups": [{"name": "Knots", "words": ["BOWLINE", "REEF", "HITCH", "SHEEPSHANK"]}, {"name": "A problem", "words": ["SNAG", "GLITCH", "HICCUP", "BUG"]}, {"name": "Grandparents", "words": ["NANA", "GRAMPS", "GRANNY", "POPS"]}, {"name": "Apples", "words": ["GALA", "FUJI", "BRAEBURN", "JAZZ"]}], "locked": {"POPS": {"g": "ladder"}, "HITCH": {"g": "wordle"}, "BUG": {"g": "emoji", "e": "🐛"}, "FUJI": {"g": "vowels"}, "BOWLINE": {"g": "anagram"}, "JAZZ": {"g": "hangman"}, "GRAMPS": {"g": "clue", "c": "Grandad, casually"}, "HICCUP": {"g": "clue", "c": "A small setback, or a jumpy breath"}, "REEF": {"g": "hangman"}}}, {"groups": [{"name": "Parts of the eye", "words": ["LENS", "RETINA", "CORNEA", "IRIS"]}, {"name": "Flowers", "words": ["TULIP", "DAISY", "LILY", "ORCHID"]}, {"name": "Learners", "words": ["PUPIL", "STUDENT", "TRAINEE", "APPRENTICE"]}, {"name": "___ school", "words": ["HIGH", "BOARDING", "NIGHT", "OLD"]}], "locked": {"LENS": {"g": "ladder"}, "PUPIL": {"g": "wordle"}, "IRIS": {"g": "emoji", "e": "👁️ 🌈"}, "HIGH": {"g": "vowels"}, "STUDENT": {"g": "anagram"}, "TRAINEE": {"g": "hangman"}, "ORCHID": {"g": "clue", "c": "Exotic flower"}, "NIGHT": {"g": "clue", "c": "Opposite of day"}, "TULIP": {"g": "wordle"}}}, {"groups": [{"name": "Snacks", "words": ["CRISPS", "PRETZEL", "POPCORN", "NACHOS"]}, {"name": "Yoga poses", "words": ["TREE", "COBRA", "WARRIOR", "LOTUS"]}, {"name": "Twisted things", "words": ["ROPE", "ANKLE", "TORNADO", "HELIX"]}, {"name": "___corn", "words": ["UNI", "PEPPER", "SWEET", "CANDY"]}], "locked": {"TREE": {"g": "ladder"}, "ANKLE": {"g": "wordle"}, "PRETZEL": {"g": "emoji", "e": "🥨"}, "PEPPER": {"g": "vowels"}, "POPCORN": {"g": "anagram"}, "WARRIOR": {"g": "hangman"}, "TORNADO": {"g": "clue", "c": "A twisting windstorm"}, "SWEET": {"g": "clue", "c": "Sugary"}, "LOTUS": {"g": "wordle"}}}, {"groups": [{"name": "Root vegetables", "words": ["CARROT", "POTATO", "CELERY", "PARSNIP"]}, {"name": "A reward", "words": ["BONUS", "PERK", "INCENTIVE", "BRIBE"]}, {"name": "Have layers", "words": ["ONION", "CAKE", "ATMOSPHERE", "LASAGNE"]}, {"name": "Fast food", "words": ["CHIPS", "BURGER", "NUGGETS", "WRAP"]}], "locked": {"PERK": {"g": "ladder"}, "BONUS": {"g": "wordle"}, "ATMOSPHERE": {"g": "emoji", "e": "🌍 ☁️"}, "LASAGNE": {"g": "vowels"}, "NUGGETS": {"g": "anagram"}, "CELERY": {"g": "hangman"}, "WRAP": {"g": "clue", "c": "Cover a present in paper"}, "PARSNIP": {"g": "clue", "c": "Pale carrot-like root"}, "ONION": {"g": "wordle"}}}, {"groups": [{"name": "Music genres", "words": ["JAZZ", "BLUES", "PUNK", "REGGAE"]}, {"name": "Feeling sad", "words": ["DOWN", "LOW", "GLUM", "MOPEY"]}, {"name": "Sound like seafood", "words": ["PLACE", "MUSCLE", "WAIL", "SOUL"]}, {"name": "Things you hold", "words": ["BREATH", "GRUDGE", "FORT", "HANDS"]}], "locked": {"SOUL": {"g": "ladder"}, "BLUES": {"g": "wordle"}, "JAZZ": {"g": "emoji", "e": "🎷"}, "GRUDGE": {"g": "vowels"}, "BREATH": {"g": "anagram"}, "MUSCLE": {"g": "hangman"}, "REGGAE": {"g": "clue", "c": "Music style from Jamaica"}, "GLUM": {"g": "clue", "c": "Sad and gloomy"}, "DOWN": {"g": "hangman"}}}, {"groups": [{"name": "Moons", "words": ["TITAN", "EUROPA", "IO", "GANYMEDE"]}, {"name": "Giants", "words": ["GOLIATH", "COLOSSUS", "BEHEMOTH", "MAMMOTH"]}, {"name": "Extinct animals", "words": ["DODO", "MOA", "QUAGGA", "THYLACINE"]}, {"name": "Moon words", "words": ["ECLIPSE", "CRATER", "PHASE", "ORBIT"]}], "locked": {"PHASE": {"g": "wordle"}, "MOA": {"g": "emoji", "e": "🦤 🇳🇿"}, "DODO": {"g": "vowels"}, "BEHEMOTH": {"g": "anagram"}, "THYLACINE": {"g": "hangman"}, "GOLIATH": {"g": "clue", "c": "Giant that David beat"}, "GANYMEDE": {"g": "clue", "c": "Jupiter's largest moon"}, "ORBIT": {"g": "wordle"}, "TITAN": {"g": "anagram"}}}, {"groups": [{"name": "Have buttons", "words": ["SHIRT", "REMOTE", "LIFT", "CALCULATOR"]}, {"name": "Far away", "words": ["DISTANT", "ISOLATED", "OUTLYING", "SECLUDED"]}, {"name": "Lift heavy things", "words": ["HOIST", "CRANE", "WINCH", "JACK"]}, {"name": "Belly ___", "words": ["BUTTON", "ACHE", "DANCE", "FLOP"]}], "locked": {"LIFT": {"g": "ladder"}, "WINCH": {"g": "wordle"}, "ACHE": {"g": "emoji", "e": "🤕"}, "ISOLATED": {"g": "vowels"}, "SECLUDED": {"g": "anagram"}, "OUTLYING": {"g": "hangman"}, "BUTTON": {"g": "clue", "c": "Fastens a shirt"}, "SHIRT": {"g": "clue", "c": "Has a collar and sleeves"}, "HOIST": {"g": "wordle"}}}, {"groups": [{"name": "Teas", "words": ["CHAI", "MATCHA", "OOLONG", "ROOIBOS"]}, {"name": "Condition of an item", "words": ["MINT", "FAIR", "POOR", "GOOD"]}, {"name": "Eco words", "words": ["GREEN", "ORGANIC", "SOLAR", "VEGAN"]}, {"name": "Hidden tea", "words": ["STEAK", "INSTEAD", "STEAM", "TEACHER"]}], "locked": {"POOR": {"g": "ladder"}, "STEAK": {"g": "wordle"}, "MATCHA": {"g": "emoji", "e": "🍵 💚"}, "INSTEAD": {"g": "vowels"}, "OOLONG": {"g": "anagram"}, "MINT": {"g": "hangman"}, "TEACHER": {"g": "clue", "c": "Works in a classroom"}, "SOLAR": {"g": "clue", "c": "Powered by the sun"}, "GREEN": {"g": "wordle"}}}, {"groups": [{"name": "Shades of pink", "words": ["CORAL", "ROSE", "FUCHSIA", "BLUSH"]}, {"name": "Fish", "words": ["SALMON", "TUNA", "HALIBUT", "SNAPPER"]}, {"name": "Wine", "words": ["RED", "WHITE", "SPARKLING", "FORTIFIED"]}, {"name": "Things you snap", "words": ["FINGERS", "PHOTO", "TWIG", "BISCUIT"]}], "locked": {"TWIG": {"g": "ladder"}, "WHITE": {"g": "wordle"}, "RED": {"g": "emoji", "e": "🍷"}, "TUNA": {"g": "vowels"}, "SPARKLING": {"g": "anagram"}, "SNAPPER": {"g": "hangman"}, "BISCUIT": {"g": "clue", "c": "Dunk it in your tea"}, "ROSE": {"g": "clue", "c": "Flower with thorns"}, "CORAL": {"g": "wordle"}}}];
+UNLIMITED.forEach((p,i)=>p.id='u'+(i+1));DAILY.forEach((p,i)=>p.id='d'+(i+1));
+const DICT = new Set(["able", "ache", "acid", "acne", "acre", "acts", "aged", "ages", "aide", "aids", "aims", "airs", "airy", "ajar", "akin", "alas", "ales", "ally", "alms", "aloe", "alps", "also", "alto", "alum", "amid", "amps", "anew", "ante", "ants", "apes", "apex", "arch", "arcs", "area", "aria", "arid", "arms", "army", "arts", "arty", "ashy", "atom", "aunt", "aura", "auto", "avid", "away", "awed", "axes", "axis", "axle", "babe", "baby", "back", "bade", "bags", "bail", "bait", "bake", "bald", "bale", "balk", "ball", "balm", "band", "bane", "bang", "bank", "bans", "barb", "bard", "bare", "bark", "barn", "bars", "base", "bash", "bask", "bass", "bath", "bats", "batt", "bawl", "bays", "bead", "beak", "beam", "bean", "bear", "beat", "beds", "beef", "been", "beep", "beer", "bees", "beet", "begs", "bell", "belt", "bend", "bent", "berg", "best", "beta", "bets", "bias", "bibs", "bide", "bids", "bike", "bile", "bilk", "bill", "bind", "bins", "bird", "bite", "bits", "bitt", "blab", "blew", "blip", "blob", "bloc", "blog", "blot", "blow", "blue", "blur", "boar", "boas", "boat", "bobs", "bode", "body", "bogs", "boil", "bold", "bole", "bolt", "bomb", "bond", "bone", "bong", "bony", "book", "boom", "boon", "boor", "boos", "boot", "bops", "bore", "born", "boss", "both", "bout", "bowl", "bows", "boxy", "boys", "brad", "brag", "bran", "bras", "brat", "bray", "bred", "brew", "brie", "brim", "brow", "buck", "buds", "buff", "bugs", "bulb", "bulk", "bull", "bump", "bums", "bung", "bunk", "buns", "bunt", "buoy", "burg", "burn", "burp", "burr", "bury", "bush", "busk", "bust", "busy", "buts", "butt", "buys", "buzz", "byte", "cabs", "cafe", "cage", "cake", "calf", "call", "calm", "came", "camp", "cams", "cane", "cans", "cape", "caps", "card", "care", "carp", "cars", "cart", "case", "cash", "cask", "cast", "cats", "cave", "cell", "cent", "chap", "char", "chat", "chef", "chew", "chic", "chin", "chip", "chop", "chow", "chum", "cite", "city", "clad", "clam", "clan", "clap", "claw", "clay", "clip", "clod", "clog", "clot", "club", "clue", "coal", "coat", "coax", "cobs", "coca", "code", "cods", "coil", "coin", "coke", "cola", "cold", "cole", "colt", "coma", "comb", "come", "cone", "conk", "cons", "cook", "cool", "coop", "cope", "cops", "copy", "cord", "core", "cork", "corn", "cost", "cosy", "cots", "coup", "cove", "cowl", "cows", "cozy", "crab", "crag", "cram", "crew", "crib", "crop", "crow", "cube", "cubs", "cued", "cues", "cuff", "cull", "cult", "cups", "curb", "curd", "cure", "curl", "curt", "cusp", "cute", "cuts", "cyan", "cyst", "czar", "dabs", "dads", "daft", "dais", "dale", "dame", "damp", "dams", "dare", "dark", "darn", "dart", "dash", "data", "date", "daub", "dawn", "days", "daze", "dead", "deaf", "deal", "dean", "dear", "debt", "deck", "deed", "deem", "deep", "deer", "deft", "defy", "dell", "demo", "dent", "deny", "desk", "dews", "dial", "dice", "died", "dies", "diet", "digs", "dill", "dime", "dims", "dine", "ding", "dint", "dips", "dire", "dirt", "disc", "dish", "disk", "diva", "dive", "dock", "dodo", "doer", "does", "doff", "dogs", "dole", "doll", "dome", "done", "dons", "doom", "door", "dorm", "dose", "dote", "dots", "dour", "dove", "down", "doze", "dozy", "drab", "drag", "dram", "draw", "dray", "drew", "drip", "drop", "drum", "dual", "dubs", "duck", "duct", "dude", "duel", "dues", "duet", "duff", "dugs", "duke", "dull", "duly", "dumb", "dump", "dune", "dung", "dunk", "dupe", "dusk", "dust", "duty", "dyed", "dyes", "each", "earl", "earn", "ears", "ease", "east", "easy", "eats", "ebbs", "echo", "eddy", "edge", "edgy", "edit", "eels", "eggs", "egos", "else", "emit", "ends", "envy", "epic", "eras", "eros", "even", "ever", "eves", "evil", "exam", "exit", "eyed", "eyes", "face", "fact", "fade", "fads", "fail", "fair", "fake", "fall", "fame", "fang", "fans", "fare", "farm", "fast", "fate", "fats", "fawn", "faze", "fear", "feat", "feds", "feed", "feel", "fees", "feet", "fell", "felt", "fend", "fern", "feud", "fibs", "figs", "file", "fill", "film", "find", "fine", "fins", "fire", "firm", "fish", "fist", "fits", "five", "fizz", "flag", "flak", "flap", "flat", "flaw", "flax", "flay", "flea", "fled", "flee", "flew", "flex", "flip", "flit", "flog", "flop", "flow", "flue", "flux", "foal", "foam", "foes", "fogs", "fogy", "foil", "fold", "folk", "fond", "font", "food", "fool", "foot", "ford", "fore", "fork", "form", "fort", "foul", "four", "fowl", "foxy", "fray", "free", "fret", "frog", "from", "fuel", "full", "fume", "fumy", "fund", "funk", "furl", "fury", "fuse", "fuss", "fuzz", "gabs", "gaff", "gags", "gain", "gait", "gala", "gale", "gall", "game", "gang", "gaps", "garb", "gash", "gasp", "gate", "gave", "gawk", "gaze", "gear", "geek", "gels", "gems", "gene", "gent", "germ", "gets", "gift", "gigs", "gild", "gill", "gilt", "gins", "gird", "girl", "gist", "give", "glad", "glee", "glib", "glow", "glue", "glum", "glut", "gnat", "gnaw", "goad", "goal", "goat", "gobs", "gods", "goes", "gold", "golf", "gone", "gong", "good", "goof", "goon", "gore", "gory", "gosh", "gout", "gown", "grab", "gram", "gray", "grew", "grey", "grid", "grim", "grin", "grip", "grit", "grow", "grub", "gulf", "gull", "gulp", "gums", "gunk", "guns", "guru", "gush", "gust", "guts", "guys", "gyms", "hack", "hail", "hair", "half", "hall", "halo", "halt", "hams", "hand", "hang", "hard", "hare", "harm", "harp", "hash", "hate", "hats", "haul", "have", "hawk", "haze", "hazy", "head", "heal", "heap", "hear", "heat", "heck", "heed", "heel", "heft", "heir", "held", "helm", "help", "hems", "hens", "herb", "herd", "here", "hero", "hers", "hewn", "hide", "high", "hike", "hill", "hilt", "hind", "hint", "hips", "hire", "hiss", "hits", "hive", "hoax", "hobo", "hock", "hogs", "hold", "hole", "holy", "home", "hone", "honk", "hood", "hoof", "hook", "hoop", "hoot", "hope", "hops", "horn", "hose", "host", "hour", "howl", "hubs", "hued", "hues", "huff", "huge", "hugs", "hula", "hulk", "hull", "hump", "hums", "hung", "hunk", "hunt", "hurl", "hurt", "hush", "husk", "huts", "hymn", "hype", "ibex", "iced", "ices", "icky", "icon", "idea", "idle", "idly", "idol", "iffy", "inch", "info", "inks", "inky", "inns", "into", "ions", "iota", "iris", "iron", "isle", "itch", "item", "jabs", "jack", "jade", "jags", "jail", "jamb", "jams", "jars", "jaws", "jazz", "jean", "jeep", "jeer", "jell", "jerk", "jest", "jets", "jibe", "jigs", "jilt", "jinx", "jive", "jobs", "jock", "jogs", "join", "joke", "jolt", "josh", "jots", "jowl", "joys", "judo", "jugs", "juke", "jump", "junk", "jury", "just", "jute", "juts", "keel", "keen", "keep", "kegs", "kelp", "kept", "keys", "kick", "kids", "kill", "kiln", "kilo", "kilt", "kind", "king", "kink", "kiss", "kite", "kits", "kiwi", "knee", "knew", "knit", "knob", "knot", "know", "labs", "lace", "lack", "lacy", "lads", "lady", "lags", "laid", "lair", "lake", "lamb", "lame", "lamp", "land", "lane", "laps", "lard", "lark", "lash", "lass", "last", "late", "lava", "lawn", "laws", "lays", "laze", "lazy", "lead", "leaf", "leak", "lean", "leap", "leek", "leer", "left", "legs", "lend", "lens", "lent", "less", "lest", "lets", "levy", "liar", "lice", "lick", "lids", "lied", "lies", "lieu", "life", "lift", "like", "lily", "limb", "lime", "limo", "limp", "line", "link", "lint", "lion", "lips", "lisp", "list", "live", "load", "loaf", "loam", "loan", "lobe", "lobs", "loch", "lock", "loft", "logo", "logs", "loin", "lone", "long", "look", "loom", "loon", "loop", "loot", "lope", "lord", "lore", "lose", "loss", "lost", "lots", "loud", "lout", "love", "lows", "luck", "lull", "lump", "lung", "lure", "lurk", "lush", "lust", "lute", "mace", "made", "maid", "mail", "maim", "main", "make", "male", "mall", "malt", "mane", "many", "maps", "mare", "mark", "mart", "mash", "mask", "mass", "mast", "mate", "math", "mats", "maul", "maze", "mead", "meal", "mean", "meat", "meek", "meet", "meld", "melt", "memo", "mend", "menu", "meow", "mere", "mesh", "mess", "mice", "mild", "mile", "milk", "mill", "mime", "mind", "mine", "mini", "mink", "mint", "minx", "mire", "miss", "mist", "mite", "mitt", "moan", "moat", "mobs", "mock", "mode", "mold", "mole", "molt", "monk", "mood", "moon", "moor", "moot", "mope", "mops", "more", "moss", "most", "moth", "move", "much", "muck", "muff", "mugs", "mule", "mull", "murk", "muse", "mush", "musk", "must", "mutt", "myth", "nabs", "nags", "nail", "name", "nape", "naps", "navy", "near", "neat", "neck", "need", "neon", "nerd", "nest", "nets", "news", "newt", "next", "nice", "nick", "nine", "nips", "node", "nods", "none", "nook", "noon", "nope", "norm", "nose", "nosy", "note", "noun", "nuke", "null", "numb", "nuns", "nuts", "oafs", "oaks", "oars", "oath", "oats", "obey", "odds", "odes", "odor", "offs", "ogle", "ogre", "oils", "oily", "okay", "olds", "omen", "omit", "once", "ones", "only", "onto", "onus", "ooze", "opal", "open", "opts", "opus", "oral", "orbs", "orca", "ores", "ouch", "ours", "oust", "outs", "oval", "oven", "over", "owed", "owes", "owls", "owns", "oxen", "pace", "pack", "pact", "pads", "page", "paid", "pail", "pain", "pair", "pale", "pall", "palm", "pals", "pane", "pang", "pans", "pant", "papa", "pare", "park", "part", "pass", "past", "pate", "path", "pats", "pave", "pawn", "paws", "pays", "peak", "peal", "pear", "peas", "peat", "peck", "peek", "peel", "peep", "peer", "pegs", "pelt", "pens", "pent", "peon", "perk", "perm", "pert", "pest", "pets", "pick", "pied", "pier", "pies", "pigs", "pike", "pile", "pill", "pine", "ping", "pink", "pins", "pint", "pipe", "pita", "pits", "pity", "plan", "play", "plea", "pled", "plod", "plop", "plot", "plow", "ploy", "plug", "plum", "plus", "pods", "poem", "poet", "poke", "pole", "poll", "polo", "pomp", "pond", "pong", "pony", "pooh", "pool", "poor", "pope", "pops", "pore", "pork", "port", "pose", "posh", "post", "posy", "pots", "pour", "pout", "pram", "pray", "prep", "prey", "prim", "prod", "prom", "prop", "pros", "prow", "pubs", "puck", "puff", "pugs", "pull", "pulp", "puma", "pump", "punk", "puns", "punt", "puny", "pupa", "pups", "pure", "purr", "push", "puts", "putt", "quad", "quay", "quip", "quit", "quiz", "race", "rack", "racy", "raft", "rage", "rags", "raid", "rail", "rain", "rake", "ramp", "rams", "rang", "rank", "rant", "rapt", "rare", "rash", "rasp", "rate", "rats", "rave", "rays", "raze", "read", "real", "ream", "reap", "rear", "reds", "reed", "reef", "reek", "reel", "rein", "rely", "rend", "rent", "rest", "ribs", "rice", "rich", "ride", "rife", "riff", "rift", "rigs", "rile", "rind", "ring", "rink", "riot", "ripe", "rips", "rise", "risk", "rite", "road", "roam", "roar", "robe", "robs", "rock", "rode", "rods", "role", "roll", "romp", "roof", "rook", "room", "root", "rope", "rose", "rosy", "rote", "rots", "rout", "rove", "rows", "rubs", "ruby", "rude", "rued", "rues", "ruff", "rugs", "ruin", "rule", "rump", "rums", "rune", "rung", "runs", "runt", "ruse", "rush", "rust", "ruts", "sack", "safe", "saga", "sage", "sags", "said", "sail", "sake", "sale", "salt", "same", "sand", "sane", "sang", "sank", "saps", "sash", "sass", "save", "saws", "says", "scab", "scam", "scan", "scar", "scat", "seal", "seam", "sear", "seas", "seat", "sect", "seed", "seek", "seem", "seen", "seep", "seer", "sees", "self", "sell", "semi", "send", "sent", "sets", "sewn", "sews", "shed", "shin", "ship", "shoe", "shoo", "shop", "shot", "show", "shun", "shut", "sick", "side", "sift", "sigh", "sign", "silk", "sill", "silo", "silt", "sing", "sink", "sins", "sips", "sire", "site", "sits", "size", "skew", "skid", "skim", "skin", "skip", "skis", "slab", "slam", "slap", "slat", "slaw", "slay", "sled", "slew", "slid", "slim", "slip", "slit", "slob", "slog", "slop", "slot", "slow", "slug", "slum", "slur", "smog", "snag", "snap", "snip", "snob", "snot", "snow", "snub", "snug", "soak", "soap", "soar", "sobs", "sock", "soda", "sofa", "soft", "soil", "sold", "sole", "solo", "some", "song", "sons", "soon", "soot", "sore", "sort", "soul", "soup", "sour", "sown", "sows", "soya", "span", "spar", "spat", "spay", "spec", "sped", "spin", "spit", "spot", "spry", "spud", "spun", "spur", "stab", "stag", "star", "stay", "stem", "step", "stew", "stir", "stop", "stow", "stub", "stud", "stun", "subs", "such", "suck", "suds", "sued", "sues", "suit", "sulk", "sumo", "sump", "sums", "sung", "sunk", "suns", "sure", "surf", "swab", "swag", "swam", "swan", "swap", "swat", "sway", "swig", "swim", "swum", "tabs", "tack", "taco", "tact", "tags", "tail", "take", "tale", "talk", "tall", "tame", "tamp", "tang", "tank", "tans", "tape", "taps", "tare", "tarp", "tart", "task", "taut", "taxi", "teak", "teal", "team", "tear", "teas", "teat", "tech", "teed", "teem", "teen", "tees", "tell", "temp", "tend", "tens", "tent", "term", "tern", "test", "text", "than", "that", "thaw", "thee", "them", "then", "they", "thin", "this", "thou", "thud", "thug", "thus", "tick", "tide", "tidy", "tied", "tier", "ties", "tiff", "tile", "till", "tilt", "time", "tint", "tiny", "tips", "tire", "toad", "tock", "toed", "toes", "tofu", "toga", "toil", "told", "toll", "tomb", "tome", "tone", "tong", "tons", "took", "tool", "toot", "tops", "tore", "torn", "tort", "toss", "tote", "tots", "tour", "tout", "town", "tows", "toys", "tram", "trap", "tray", "tree", "trek", "trim", "trio", "trip", "trod", "trot", "troy", "true", "tsar", "tuba", "tube", "tubs", "tuck", "tuft", "tugs", "tuna", "tune", "turf", "turn", "tusk", "tutu", "twig", "twin", "twit", "twos", "type", "typo", "ugly", "undo", "unit", "unto", "upon", "urge", "used", "user", "uses", "vain", "vale", "vamp", "vane", "vans", "vary", "vase", "vast", "vats", "veal", "veer", "veil", "vein", "vent", "verb", "very", "vest", "veto", "vets", "vial", "vibe", "vice", "view", "vile", "vine", "visa", "vise", "void", "vole", "volt", "vote", "vows", "wade", "wads", "waft", "wage", "wags", "waif", "wail", "wait", "wake", "walk", "wall", "wand", "wane", "want", "ward", "ware", "warm", "warn", "warp", "wars", "wart", "wary", "wash", "wasp", "watt", "wave", "wavy", "waxy", "ways", "weak", "wean", "wear", "webs", "weds", "weed", "week", "weep", "weld", "well", "welt", "went", "wept", "were", "west", "wets", "wham", "what", "when", "whet", "whey", "whim", "whip", "whiz", "whom", "wick", "wide", "wife", "wigs", "wild", "will", "wilt", "wily", "wimp", "wind", "wine", "wing", "wink", "wins", "wipe", "wire", "wiry", "wise", "wish", "wisp", "with", "wits", "woes", "woke", "woks", "wolf", "womb", "wont", "wood", "woof", "wool", "word", "wore", "work", "worm", "worn", "wove", "wrap", "wren", "writ", "yack", "yaks", "yams", "yank", "yaps", "yard", "yarn", "yawn", "yeah", "year", "yell", "yelp", "yens", "yeti", "yews", "yoga", "yoke", "yolk", "your", "yowl", "yuck", "zany", "zaps", "zeal", "zero", "zest", "zinc", "zing", "zips", "zone", "zoom", "zoos"]);
+const GAMES = {
+  wordle:{icon:'▦',name:'Wordle',desc:'Guess the word in 6 tries. Green = right letter, right spot. Yellow = in the word, wrong spot.'},
+  ladder:{icon:'⇅',name:'Ladder',desc:'Change one letter at a time to reach the hidden word. You\'re told how many steps away you are.'},
+  anagram:{icon:'⇄',name:'Anagram',desc:'Drag the letters (or tap two to swap them) into the right order before time runs out.'},
+  clue:{icon:'❝',name:'Clue',desc:'Answer the clue in 3 tries. Each miss reveals a letter.'},
+  emoji:{icon:'☻',name:'Emoji',desc:'Work out the word from the emojis in 3 tries. Each miss reveals a letter.'},
+  hangman:{icon:'◇',name:'Hangman',desc:'Guess letters (tap or type) before you run out of 6 lives.'},
+  vowels:{icon:'∅',name:'No Vowels',desc:'The word with its vowels taken out. Fill it back in within 3 tries. Each miss puts one vowel back.'}
+};
+const COLORS=['var(--g0)','var(--g1)','var(--g2)','var(--g3)'], SQ=['🟩','🟧','🟥','🟦'];
+const $=id=>document.getElementById(id);
+const store={get(k,d){try{const v=localStorage.getItem('ll_'+k);return v?JSON.parse(v):d;}catch(e){return d;}},set(k,v){try{localStorage.setItem('ll_'+k,JSON.stringify(v));}catch(e){}}};
+const EPOCH=Date.UTC(2026,10,20);
+function dayNum(){const n=new Date();return Math.floor((Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())-EPOCH)/864e5)+1;}
+function fmtDay(n){const d=new Date(EPOCH+(n-1)*864e5);return d.toLocaleDateString(undefined,{day:'numeric',month:'short',timeZone:'UTC'});}
+// Today's daily. Past dailies move into Unlimited automatically.
+function todayDaily(){const n=dayNum();
+  if(n>=1&&n<=DAILY.length)return{p:DAILY[n-1],label:'Daily #'+n+' · '+fmtDay(n)};
+  const pool=UNLIMITED.concat(DAILY);return{p:pool[hashStr('encore'+n)%pool.length],label:'Daily · '+fmtDay(n)};} // fallback if the batch runs out
+function unlimitedPool(){const n=Math.max(0,Math.min(dayNum()-1,DAILY.length));return UNLIMITED.concat(DAILY.slice(0,n));}
+// carry over progress saved by the earlier version (keys p0..p9)
+try{for(let i=0;i<10;i++){const o=localStorage.getItem('ll_p'+i);if(o&&!localStorage.getItem('ll_p_u'+(i+1)))localStorage.setItem('ll_p_u'+(i+1),o);}}catch(e){}
+function hashStr(s){let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
+function shuffle(a,seed){a=a.slice();let s=seed||Math.floor(Math.random()*1e9);for(let i=a.length-1;i>0;i--){s=(Math.imul(s,1103515245)+12345)>>>0;const j=s%(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+let P,G,pIdx,mode='daily',label='',sel=[];
+function groupOf(w){return P.groups.findIndex(g=>g.words.includes(w));}
+
+function load(p,lbl,m){
+  P=p;pIdx=p.id;label=lbl;mode=m;sel=[];
+  const all=P.groups.flatMap(g=>g.words);
+  G=store.get('p_'+p.id,null)||{order:shuffle(all,hashStr('order'+p.id)),unlocked:[],failed:[],solved:[],mistakes:0,guesses:[],done:false,won:false};
+  $('sub').textContent=label+' · Make 4 groups of 4';
+  $('tDaily').classList.toggle('on',m==='daily');$('tUnl').classList.toggle('on',m!=='daily');
+  setMsg('');render();
+}
+function loadDaily(){const d=todayDaily();load(d.p,d.label,'daily');}
+function loadUnl(k){const pool=unlimitedPool();load(pool[k],'Unlimited #'+(k+1),'unl');}
+function save(){store.set('p_'+pIdx,G);}
+function isLocked(w){return w in P.locked && !G.unlocked.includes(w) && !G.solved.includes(groupOf(w)) && !(G.done);}
+
+function updateStats(){
+  let played=0,won=0;UNLIMITED.concat(DAILY).forEach(p=>{const s=store.get('p_'+p.id,null);if(s&&s.done){played++;if(s.won)won++;}});
+  $('statbar').innerHTML='<div><b>'+played+'</b>Played</div><div><b>'+won+'</b>Solved</div><div class="wr"><b>'+(played?Math.round(won/played*100):0)+'%</b>Win rate</div>';
+}
+function nextPuzzle(){
+  const pool=unlimitedPool();const cur=mode==='unl'?pool.findIndex(p=>p.id===pIdx):-1;
+  for(let k=1;k<=pool.length;k++){const i=(cur+k+pool.length)%pool.length;const s=store.get('p_'+pool[i].id,null);if(!s||!s.done){loadUnl(i);window.scrollTo(0,0);return;}}
+  openList();setMsg('You\'ve played every puzzle so far. A new one arrives tomorrow!','good');
+}
+function render(fresh){
+  updateStats();
+  const sa=$('solvedArea');
+  const shown=G.done? [...G.solved,...[0,1,2,3].filter(x=>!G.solved.includes(x))] : G.solved;
+  const key=pIdx+':'+shown.join(',');
+  if(sa.dataset.key!==key){ // only rebuild when the solved groups actually change
+    const had=(sa.dataset.key||'').split(':')[0]===String(pIdx)?sa.children.length:0;
+    sa.innerHTML='';sa.dataset.key=key;
+    shown.forEach((gi,k)=>{const g=P.groups[gi];const d=document.createElement('div');d.className='solved';if(k<had)d.style.animation='none';d.style.background=COLORS[gi];
+      d.innerHTML='<b>'+g.name+'</b><span>'+g.words.join(', ')+'</span>';sa.appendChild(d);});
+  }
+  const grid=$('grid');grid.innerHTML='';
+  G.order.filter(w=>!shown.includes(groupOf(w))).forEach(w=>{
+    const b=document.createElement('button');b.className='tile';
+    if(isLocked(w)){
+      const L=P.locked[w];
+      if(G.failed.includes(w)){b.classList.add('fail');b.innerHTML='<span class="ic">✕</span><span class="lb">LOST</span>';}
+      else{b.classList.add('lock');b.innerHTML='<span class="ic">'+GAMES[L.g].icon+'</span><span class="lb">'+GAMES[L.g].name.toUpperCase()+'</span>';}
+    } else {b.textContent=w;if(fresh===w)b.classList.add('new');}
+    if(sel.includes(w))b.classList.add('sel');
+    b.onclick=()=>tapTile(w);grid.appendChild(b);
+  });
+  const dots=$('dots');dots.innerHTML='';for(let i=0;i<4;i++){const d=document.createElement('span');d.className='dot'+(i<G.mistakes?' off':'');dots.appendChild(d);}
+  $('mainActions').style.display=G.done?'none':'';$('endActions').style.display=G.done?'':'none';
+  $('subBtn').disabled=sel.length!==4;$('deselBtn').disabled=!sel.length;
+}
+function setMsg(t,c){const m=$('msg');m.textContent=t;m.className='msg '+(c||'');}
+
+let pending=null;
+function tapTile(w){
+  if(G.done)return;
+  if(sel.includes(w)){sel=sel.filter(x=>x!==w);render();return;}
+  if(isLocked(w)&&!G.failed.includes(w)){
+    pending=w;const L=P.locked[w],gm=GAMES[L.g];
+    $('chTitle').innerHTML='<span class="gi">'+gm.icon+'</span>'+gm.name;
+    $('chText').innerHTML=gm.desc+'<br><br><b>Win</b> and the word is revealed. <b>Lose</b> and it stays locked for good.';
+    $('chSel').disabled=sel.length>=4;
+    $('chooseOv').classList.add('show');return;
+  }
+  if(sel.length>=4){setMsg('You can only pick 4','bad');return;}
+  sel.push(w);setMsg('');render();
+}
+$('chPlay').onclick=()=>{closeAll();startMini(pending);};
+$('chSel').onclick=()=>{closeAll();if(sel.length<4){sel.push(pending);render();}};
+
+function submit(){
+  if(sel.length!==4||G.done)return;
+  const key=sel.slice().sort().join('|');
+  if(G.guesses.some(g=>g.slice().sort().join('|')===key)){setMsg('You already tried that','bad');return;}
+  G.guesses.push(sel.slice());
+  const gs=sel.map(groupOf);const counts={};gs.forEach(x=>counts[x]=(counts[x]||0)+1);
+  const max=Math.max(...Object.values(counts));
+  if(max===4){
+    const gi=gs[0];G.solved.push(gi);
+    const hidden=sel.filter(w=>w in P.locked&&!G.unlocked.includes(w));
+    G.deduced=(G.deduced||0)+hidden.length;
+    sel=[];setMsg(hidden.length?'Nice! '+hidden.length+' word'+(hidden.length>1?'s':'')+' solved while still locked':'Correct!','good');
+    if(G.solved.length===4){G.done=true;G.won=true;}
+  } else {
+    G.mistakes++;
+    document.querySelectorAll('.tile.sel').forEach(t=>{t.classList.remove('shake');void t.offsetWidth;t.classList.add('shake');});
+    setMsg(max===3?'One away…':'Not quite','bad');
+    if(G.mistakes>=4){G.done=true;G.won=false;sel=[];setMsg('Out of mistakes. Here are the answers.','bad');}
+  }
+  save();setTimeout(()=>render(),max===4?0:350);
+  if(G.done){const id=pIdx;setTimeout(()=>{if(pIdx===id)showEnd();},900);}
+}
+$('subBtn').onclick=submit;
+$('deselBtn').onclick=()=>{sel=[];render();};
+$('shufBtn').onclick=()=>{G.order=shuffle(G.order);save();render();};
+
+function showEnd(){
+  const ded=G.deduced||0, unl=G.unlocked.length, fl=G.failed.length;
+  $('endTitle').textContent=G.won?(G.mistakes===0?'Flawless.':'Solved.'):'Out of mistakes.';
+  $('endText').innerHTML=(G.won?'You found all 4 groups with '+G.mistakes+' mistake'+(G.mistakes===1?'':'s')+'.':'You ran out of mistakes.')+
+    '<br>Unlocked: <b>'+unl+'</b> · Lost: <b>'+fl+'</b> · Solved blind: <b>'+ded+'</b>';
+  $('endGrid').innerHTML=G.guesses.map(r=>r.map(w=>SQ[groupOf(w)]).join('')).join('<br>');
+  $('shareMsg').textContent='';$('endOv').classList.add('show');
+}
+$('resBtn').onclick=showEnd;
+$('newBtn').onclick=nextPuzzle;
+function shareText(){return 'Locked Links · '+label.split(' · ')[0]+'\n'+G.guesses.map(r=>r.map(w=>SQ[groupOf(w)]).join('')).join('\n')+'\nUnlocked '+G.unlocked.length+' · Lost '+G.failed.length+' · Solved blind '+(G.deduced||0);}
+$('shareBtn').onclick=async()=>{const t=shareText();try{await navigator.clipboard.writeText(t);$('shareMsg').textContent='Copied! Paste it anywhere.';}catch(e){$('shareMsg').innerHTML='';const ta=document.createElement('textarea');ta.value=t;ta.rows=7;ta.style.width='100%';$('shareMsg').appendChild(ta);ta.select();}};
+$('nextBtn').onclick=()=>{closeAll();nextPuzzle();};
+
+/* ---------- MINI-GAMES ---------- */
+let MG=null;
+function startMini(w){
+  const L=P.locked[w],gm=GAMES[L.g];
+  MG={w,type:L.g,over:false,timer:null,key:null};
+  $('mgTitle').innerHTML='<span class="gi">'+gm.icon+'</span>'+gm.name;$('mgSub').textContent=gm.desc;
+  $('mgBody').innerHTML='';$('mgMsg').textContent='';$('mgMsg').className='mgmsg';$('mgDone').style.display='none';$('mgQuit').style.display='';
+  $('mgOv').classList.add('show');
+  ({wordle:mgWordle,ladder:mgLadder,anagram:mgAnagram,clue:mgClue,emoji:mgClue,hangman:mgHangman,vowels:mgVowels})[L.g](w,L);
+}
+function mgEnd(win,note){
+  if(MG.over)return;MG.over=true;clearInterval(MG.timer);if(MG.cleanup)MG.cleanup();
+  const w=MG.w;
+  if(win){G.unlocked.push(w);}else{G.failed.push(w);}
+  save();
+  $('mgMsg').className='mgmsg '+(win?'good':'bad');
+  $('mgMsg').innerHTML=win?'Unlocked: <b>'+w+'</b>':(note||'Out of tries.')+' This tile stays locked.';
+  $('mgBody').querySelectorAll('input,button').forEach(e=>{if(!e.classList.contains('hit'))e.disabled=true;});
+  $('mgDone').style.display='';$('mgQuit').style.display='none';
+  MG.win=win;
+}
+$('mgQuit').onclick=()=>mgEnd(false,'You gave up.');
+$('mgBack').onclick=()=>{const w=MG.w,win=MG.win;closeAll();render(win?w:null);if(win)setMsg('Revealed: '+w,'good');};
+function inputRow(placeholder,onSubmit,maxLen){
+  const r=document.createElement('div');r.className='inrow';
+  const i=document.createElement('input');i.placeholder=placeholder;i.autocomplete='off';i.autocapitalize='characters';i.spellcheck=false;if(maxLen)i.maxLength=maxLen;
+  const b=document.createElement('button');b.className='btn primary';b.textContent='Enter';
+  const go=()=>{const v=i.value.toUpperCase().replace(/[^A-Z]/g,'');if(!v)return;if(onSubmit(v)!==false)i.value='';i.focus();};
+  b.onclick=go;i.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();go();}};
+  r.append(i,b);setTimeout(()=>i.focus(),50);return r;
+}
+function mgMsg(t,c){if(MG.over)return;$('mgMsg').textContent=t;$('mgMsg').className='mgmsg '+(c||'');}
+function wordRow(word,cls){const r=document.createElement('div');r.className='wrow';[...word].forEach((ch,i)=>{const t=document.createElement('div');t.className='wt '+(cls?cls[i]||'':'');t.textContent=ch;r.appendChild(t);});return r;}
+
+// Wordle (real Wordle style: type into the rows, coloured keyboard)
+function mgWordle(W){
+  const n=W.length,max=6,body=$('mgBody');
+  $('mgSub').textContent=GAMES.wordle.desc+' The word has '+n+' letters.';
+  const rows=document.createElement('div');const kb=document.createElement('div');kb.className='wkb';body.append(rows,kb);
+  const gs=[];let cur='';const keyCol={};const rank={wn:1,wy:2,wg:3};
+  const draw=()=>{rows.innerHTML='';
+    gs.forEach(g=>rows.appendChild(wordRow(g.w,g.c)));
+    if(gs.length<max&&!MG.over){const r=wordRow(cur.padEnd(n,' '));r.querySelectorAll('.wt').forEach((t,i)=>{if(cur[i])t.classList.add('cur');});rows.appendChild(r);}
+    for(let i=gs.length+(gs.length<max&&!MG.over?1:0);i<max;i++)rows.appendChild(wordRow(' '.repeat(n)));
+    kb.querySelectorAll('.wk[data-k]').forEach(b=>{b.className='wk'+(b.dataset.k.length>1?' wide':'')+(keyCol[b.dataset.k]?' '+keyCol[b.dataset.k]:'');});};
+  const enter=()=>{
+    if(MG.over)return;
+    if(cur.length!==n){mgMsg('Not enough letters','bad');const r=rows.children[gs.length];if(r){r.classList.remove('shake');void r.offsetWidth;r.classList.add('shake');}return;}
+    const v=cur,c=Array(n).fill('wn'),rest={};
+    for(let i=0;i<n;i++){if(v[i]===W[i])c[i]='wg';else rest[W[i]]=(rest[W[i]]||0)+1;}
+    for(let i=0;i<n;i++){if(c[i]!=='wg'&&rest[v[i]]){c[i]='wy';rest[v[i]]--;}}
+    for(let i=0;i<n;i++){const k=v[i];if(!keyCol[k]||rank[c[i]]>rank[keyCol[k]])keyCol[k]=c[i];}
+    gs.push({w:v,c});cur='';mgMsg('');
+    if(v===W){MG.over=false;draw();mgEnd(true);draw();}else if(gs.length>=max){draw();mgEnd(false,'Out of guesses.');draw();}else draw();
+  };
+  const press=k=>{if(MG.over)return;if(k==='ENTER')enter();else if(k==='DEL')cur=cur.slice(0,-1);else if(/^[A-Z]$/.test(k)&&cur.length<n)cur+=k;if(k!=='ENTER')draw();};
+  ['QWERTYUIOP','ASDFGHJKL','+ZXCVBNM-'].forEach(r=>{const d=document.createElement('div');d.className='wkr';[...r].forEach(ch=>{const b=document.createElement('button');
+    const k=ch==='+'?'ENTER':ch==='-'?'DEL':ch;b.dataset.k=k;b.className='wk';b.textContent=k==='ENTER'?'Enter':k==='DEL'?'⌫':k;b.onclick=()=>press(k);d.appendChild(b);});kb.appendChild(d);});
+  MG.key=e=>{if(e.key==='Enter'){e.preventDefault();press('ENTER');}else if(e.key==='Backspace'){e.preventDefault();press('DEL');}else if(/^[a-zA-Z]$/.test(e.key))press(e.key.toUpperCase());};
+  draw();
+}
+// Hot/Cold Ladder
+function nbrs(w){const o=[];for(let i=0;i<4;i++)for(const c of 'abcdefghijklmnopqrstuvwxyz'){if(c===w[i])continue;const y=w.slice(0,i)+c+w.slice(i+1);if(DICT.has(y))o.push(y);}return o;}
+function mgLadder(W){
+  const t=W.toLowerCase();const D={};D[t]=0;const q=[t];for(let h=0;h<q.length;h++){for(const y of nbrs(q[h]))if(!(y in D)){D[y]=D[q[h]]+1;q.push(y);}}
+  const cands=Object.keys(D).filter(k=>D[k]===3&&!k.endsWith('s')).sort();
+  const start=cands[hashStr(W)%cands.length];
+  const path=[start];
+  $('mgSub').textContent='Start from '+start.toUpperCase()+'. Change one letter at a time; every step must be a real 4-letter word. Reach the hidden word in as many moves as you like. Went the wrong way? Undo is free.';
+  const box=document.createElement('div');$('mgBody').appendChild(box);
+  const heat=d=>d===undefined?'DEAD END':d===0?'GOT IT':d===1?'HOT · 1 step':d===2?'WARM · 2 steps':d===3?'COOL · 3 steps':'COLD · '+d+' steps';
+  const draw=()=>{box.innerHTML='';path.forEach((w,i)=>{const r=document.createElement('div');r.className='ladrow';r.appendChild(wordRow(w.toUpperCase()));
+    const h=document.createElement('span');h.className='heat';h.textContent=heat(D[w]);h.style.color=D[w]===undefined?'var(--bad)':D[w]<=1?'var(--accent)':D[w]===2?'var(--g1)':'var(--muted)';r.appendChild(h);box.appendChild(r);});
+    const m=document.createElement('div');m.className='timer';m.innerHTML='Moves: <b>'+(path.length-1)+'</b>';box.appendChild(m);undo.disabled=path.length<2||MG.over;};
+  const undo=document.createElement('button');undo.className='btn';undo.textContent='↩ Undo';undo.style.cssText='display:block;margin:10px auto 0';
+  undo.onclick=()=>{if(path.length>1&&!MG.over){path.pop();mgMsg('');draw();}};
+  draw();
+  $('mgBody').appendChild(inputRow('next word',v=>{
+    v=v.toLowerCase();const cur=path[path.length-1];
+    if(v.length!==4){mgMsg('Needs 4 letters','bad');return false;}
+    let d=0;for(let i=0;i<4;i++)if(v[i]!==cur[i])d++;
+    if(d!==1){mgMsg('Change exactly one letter','bad');return false;}
+    if(!DICT.has(v)){mgMsg('Not in the word list','bad');return false;}
+    path.push(v);mgMsg('');draw();
+    if(v===t)mgEnd(true);
+  },4));
+  $('mgBody').appendChild(undo);
+}
+// Anagram: drag tiles or tap two to swap
+function mgAnagram(W){
+  let letters=[...W];do{letters=shuffle(letters);}while(letters.join('')===W&&W.length>1);
+  const secs=25+5*W.length;let left=secs,pick=-1;
+  const row=document.createElement('div');row.className='atiles';
+  const tm=document.createElement('div');tm.className='timer';const bar=document.createElement('div');bar.className='timebar';bar.innerHTML='<i style="width:100%"></i>';
+  const check=()=>{if(letters.join('')===W){row.querySelectorAll('.atile').forEach(a=>a.classList.add('solved'));mgEnd(true);}};
+  const draw=()=>{row.innerHTML='';letters.forEach((ch,i)=>{const a=document.createElement('div');a.className='atile'+(i===pick?' pick':'');a.textContent=ch;a.dataset.i=i;row.appendChild(a);});};
+  const swap=(i,j)=>{if(i===j)return;[letters[i],letters[j]]=[letters[j],letters[i]];};
+  // pointer handling: short tap = select/swap, drag = move
+  let drag=null;
+  row.addEventListener('pointerdown',e=>{const a=e.target.closest('.atile');if(!a||MG.over)return;e.preventDefault();
+    drag={i:+a.dataset.i,x:e.clientX,y:e.clientY,moved:false,ghost:null,over:null};});
+  const onMove=e=>{if(!drag||MG.over)return;
+    if(!drag.moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>6){drag.moved=true;pick=-1;draw();
+      row.children[drag.i].classList.add('drag');const g=document.createElement('div');g.className='ghost';g.textContent=letters[drag.i];document.body.appendChild(g);drag.ghost=g;}
+    if(drag.moved){drag.ghost.style.left=e.clientX+'px';drag.ghost.style.top=e.clientY+'px';
+      const el=document.elementFromPoint(e.clientX,e.clientY);const a=el&&el.closest&&el.closest('.atile');
+      row.querySelectorAll('.over').forEach(x=>x.classList.remove('over'));drag.over=null;
+      if(a&&row.contains(a)&&+a.dataset.i!==drag.i){a.classList.add('over');drag.over=+a.dataset.i;}}};
+  const onUp=()=>{if(!drag)return;const d=drag;drag=null;if(d.ghost)d.ghost.remove();
+    if(MG.over)return;
+    if(d.moved){if(d.over!=null){const ch=letters.splice(d.i,1)[0];letters.splice(d.over,0,ch);}draw();check();return;}
+    if(pick<0){pick=d.i;draw();}else{swap(pick,d.i);pick=-1;draw();check();}};
+  document.addEventListener('pointermove',onMove);document.addEventListener('pointerup',onUp);
+  MG.cleanup=()=>{document.removeEventListener('pointermove',onMove);document.removeEventListener('pointerup',onUp);};
+  const shuf=document.createElement('button');shuf.className='btn';shuf.textContent='Shuffle';shuf.style.cssText='display:block;margin:0 auto 10px';
+  shuf.onclick=()=>{letters=shuffle(letters);pick=-1;draw();};
+  draw();$('mgBody').append(row,shuf,tm,bar);
+  const tick=()=>{tm.innerHTML='Time left <b>'+Math.max(left,0)+'s</b>';bar.firstChild.style.width=(Math.max(left,0)/secs*100)+'%';if(left<=0){mgEnd(false,'Time\'s up.');return;}left--;};tick();MG.timer=setInterval(tick,1000);
+}
+// Clue & Emoji
+function mgClue(W,L){
+  const n=W.length;const rev=new Set();let tries=3;
+  const c=document.createElement('div');c.className=L.g==='emoji'?'big':'clue';c.textContent=L.g==='emoji'?L.e:'“'+L.c+'”';
+  const blanks=document.createElement('div');const info=document.createElement('div');info.className='timer';
+  const draw=()=>{blanks.innerHTML='';blanks.appendChild(wordRow([...W].map((ch,i)=>rev.has(i)?ch:' ').join(''),[...W].map((_,i)=>rev.has(i)?'rev':'')));info.innerHTML=n+' letters · Tries left: <b>'+tries+'</b>';};
+  draw();$('mgBody').append(c,blanks,info);
+  $('mgBody').appendChild(inputRow(n+' letters',v=>{
+    if(v.length!==n){mgMsg('Needs '+n+' letters','bad');return false;}
+    if(v===W){[...W].forEach((_,i)=>rev.add(i));draw();mgEnd(true);return;}
+    tries--;const hid=[...W].map((_,i)=>i).filter(i=>!rev.has(i));if(hid.length>1)rev.add(hid[0]);
+    draw();if(tries<=0)mgEnd(false,'Out of tries.');else mgMsg('Not quite. Here\'s a letter.','bad');
+  },n));
+  const pass=document.createElement('button');pass.className='btn';pass.textContent='Pass · reveal a letter';pass.style.cssText='display:block;margin:10px auto 0';
+  pass.onclick=()=>{if(MG.over)return;tries--;const hid=[...W].map((_,i)=>i).filter(i=>!rev.has(i));if(hid.length>1)rev.add(hid[0]);
+    draw();if(tries<=0)mgEnd(false,'Out of tries.');else mgMsg('Passed. Here\'s a letter (costs a try).','');};
+  $('mgBody').appendChild(pass);
+}
+// Hangman (tap or type)
+function mgHangman(W){
+  let lives=6;const got=new Set(),used=new Set();
+  const lv=document.createElement('div');lv.className='lives';const blanks=document.createElement('div');blanks.style.marginTop='12px';
+  const kb=document.createElement('div');kb.className='letters';const info=document.createElement('div');info.className='timer';info.style.marginTop='8px';info.textContent=W.length+' letters';
+  const draw=()=>{lv.innerHTML='';for(let i=0;i<6;i++){const d=document.createElement('i');if(i>=lives)d.className='off';lv.appendChild(d);}
+    blanks.innerHTML='';blanks.appendChild(wordRow([...W].map(ch=>got.has(ch)?ch:' ').join(''),[...W].map(ch=>got.has(ch)?'wg':'')));};
+  const guess=ch=>{if(MG.over||used.has(ch))return;used.add(ch);const b=kb.querySelector('[data-k="'+ch+'"]');if(b)b.disabled=true;
+    if(W.includes(ch)){got.add(ch);if(b)b.classList.add('hit');}else lives--;
+    draw();if([...W].every(x=>got.has(x)))mgEnd(true);else if(lives<=0)mgEnd(false,'Out of lives.');};
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(ch=>{const b=document.createElement('button');b.textContent=ch;b.dataset.k=ch;b.onclick=()=>guess(ch);kb.appendChild(b);});
+  MG.key=e=>{if(/^[a-zA-Z]$/.test(e.key)){e.preventDefault();guess(e.key.toUpperCase());}};
+  draw();$('mgBody').append(lv,blanks,info,kb);
+}
+// No Vowels
+function mgVowels(W){
+  const n=W.length,V='AEIOU';const rev=new Set();let tries=3;
+  const show=()=>[...W].map((ch,i)=>V.includes(ch)&&!rev.has(i)?' ':ch).join('');
+  const sk=document.createElement('div');sk.className='big';sk.style.letterSpacing='8px';sk.textContent=[...W].filter(ch=>!V.includes(ch)).join('');
+  const blanks=document.createElement('div');const info=document.createElement('div');info.className='timer';
+  const draw=()=>{blanks.innerHTML='';blanks.appendChild(wordRow(show(),[...W].map((ch,i)=>V.includes(ch)?(rev.has(i)?'rev':''):'')));info.innerHTML=n+' letters · Tries left <b>'+tries+'</b>';};
+  draw();$('mgBody').append(sk,blanks,info);
+  $('mgBody').appendChild(inputRow('full word',v=>{
+    if(v.length!==n){mgMsg('Needs '+n+' letters','bad');return false;}
+    if(v===W){[...W].forEach((_,i)=>rev.add(i));draw();mgEnd(true);return;}
+    tries--;const hid=[...W].map((ch,i)=>i).filter(i=>V.includes(W[i])&&!rev.has(i));if(hid.length>1)rev.add(hid[0]);
+    draw();if(tries<=0)mgEnd(false,'Out of tries.');else mgMsg('Not quite. One vowel is back.','bad');
+  },n));
+}
+
+/* ---------- UI plumbing ---------- */
+function closeAll(){document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('show'));}
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeAll);
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o&&o.id!=='mgOv')closeAll();}));
+document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const mg=$('mgOv').classList.contains('show');if(mg&&MG&&MG.key&&!MG.over){MG.key(e);return;}if(e.key==='Escape'&&!mg)closeAll();});
+$('helpBtn').onclick=()=>$('helpOv').classList.add('show');
+function openList(){const pl=$('plist');pl.innerHTML='';unlimitedPool().forEach((p,i)=>{const b=document.createElement('button');b.textContent=i+1;const s=store.get('p_'+p.id,null);
+  if(mode==='unl'&&p.id===pIdx)b.classList.add('today');if(s&&s.done)b.classList.add(s.won?'won':'lost');b.onclick=()=>{closeAll();loadUnl(i);};pl.appendChild(b);});
+  $('listCount').textContent=unlimitedPool().length;$('listOv').classList.add('show');}
+$('listBtn').onclick=openList;
+const lg=Object.values(GAMES).map(g=>'<span class="gi">'+g.icon+'</span><span><b>'+g.name+'</b>: '+g.desc+'</span>').join('');
+$('helpLegend').innerHTML=lg;
+$('legend').innerHTML=Object.values(GAMES).map(g=>'<span><b>'+g.icon+'</b>'+g.name+'</span>').join('')+'<span><b>✕</b>Lost</span>';
+
+$('tDaily').onclick=loadDaily;$('tUnl').onclick=()=>nextPuzzle();
+loadDaily();
+if(!store.get('seenHelp',false)){$('helpOv').classList.add('show');store.set('seenHelp',true);}
+</script>
+</body>
+</html>
